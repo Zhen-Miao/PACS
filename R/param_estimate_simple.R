@@ -14,18 +14,18 @@ require('dplyr')
 #'
 #' @param r_by_c region by cell matrix
 #' @param group_set A set of cell type labels
-#' @param group_lables A vector of cell type labels for each cell
+#' @param group_labels A vector of cell type labels for each cell
 #' @param batch_labels A vector of batch labels for each cell
 #' @param capturing_rate A vector of capturing rates for each cell
 #'
-#' @return A list with three elements, r_by_c_pseudo, group_lables_pseudo,
+#' @return A list with three elements, r_by_c_pseudo, group_labels_pseudo,
 #'   and capturing_rate_pseudo
 #'
 #' @noRd
 add_pseudo_count <- function(
   r_by_c,
   group_set,
-  group_lables,
+  group_labels,
   batch_labels,
   capturing_rate
 ){
@@ -60,7 +60,7 @@ add_pseudo_count <- function(
   ## append the values
   r_by_c_pseudo = cbind(r_by_c,new_r_by_c)
 
-  group_lables_pseudo = append(group_lables, new_group_labels)
+  group_labels_pseudo = append(group_labels, new_group_labels)
   capturing_rate_pseudo = append(capturing_rate,new_capturing_rate )
   if(!is.na(batch_labels)){
     batch_labels_pseudo = append(batch_labels, new_batch_labels)
@@ -70,11 +70,11 @@ add_pseudo_count <- function(
   if(!is.na(batch_labels)){
     ret = list(r_by_c_pseudo = r_by_c_pseudo,
                batch_labels_pseudo = batch_labels_pseudo,
-               group_lables_pseudo = group_lables_pseudo,
+               group_labels_pseudo = group_labels_pseudo,
                capturing_rate_pseudo = capturing_rate_pseudo)
   }else{
     ret = list(r_by_c_pseudo = r_by_c_pseudo,
-               group_lables_pseudo = group_lables_pseudo,
+               group_labels_pseudo = group_labels_pseudo,
                capturing_rate_pseudo = capturing_rate_pseudo)
   }
   return(ret)
@@ -85,7 +85,7 @@ add_pseudo_count <- function(
 #'
 #' @param r_by_c
 #' @param group_set
-#' @param group_lables
+#' @param group_labels
 #' @param capturing_rate
 #' @param max_p
 #' @param min_p
@@ -99,7 +99,7 @@ add_pseudo_count <- function(
 get_r_by_ct_mat <- function(
   r_by_c,
   group_set,
-  group_lables,
+  group_labels,
   capturing_rate,
   max_p = 0.999,
   min_p = 0.0001,
@@ -108,7 +108,7 @@ get_r_by_ct_mat <- function(
   adding_pseudo_count = T
 ){
   ## check input peak by cell
-  if (dim(r_by_c)[2] != length(group_lables)) {
+  if (dim(r_by_c)[2] != length(group_labels)) {
     stop("n_cells in pbyc should equals to n_cells in labels")
   }else if(dim(r_by_c)[2] != length(capturing_rate)) {
     stop("n_cells in pbyc should equals to n_cells in capturing rate")
@@ -128,22 +128,22 @@ get_r_by_ct_mat <- function(
 
   ## add pesudo_count
   if(adding_pseudo_count){
-    ret_list = add_pseudo_count(r_by_c = r_by_c, group_set = group_set, group_lables = group_lables,
+    ret_list = add_pseudo_count(r_by_c = r_by_c, group_set = group_set, group_labels = group_labels,
                                 batch_labels = NA, capturing_rate = capturing_rate )
 
     r_by_c = ret_list$r_by_c_pseudo
-    group_lables = ret_list$group_lables_pseudo
+    group_labels = ret_list$group_labels_pseudo
     capturing_rate = ret_list$capturing_rate_pseudo
   }
 
   sum_capturing_rate = vector(length = length(group_set))
   names(sum_capturing_rate) <- group_set
   for(i in group_set){
-    sum_capturing_rate[i] <- sum(capturing_rate[group_lables == i])
+    sum_capturing_rate[i] <- sum(capturing_rate[group_labels == i])
   }
   for(i in group_set){
     # print(paste(i,'running'))
-    pbyt_vec = (Matrix::rowSums(r_by_c[,group_lables == i]) ) / sum_capturing_rate[i]
+    pbyt_vec = (Matrix::rowSums(r_by_c[,group_labels == i]) ) / sum_capturing_rate[i]
 
     ## correct for values >=1 and =0
     pbyt_vec[pbyt_vec > max_p] = max_p
