@@ -6,6 +6,7 @@
 #' @importFrom tictoc tic
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
+#' @import Matrix
 #'
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells
@@ -28,6 +29,7 @@
 #'   null model, we do not
 #'   need to specify unless there are reasons to do so. Default = NULL
 #' @param n_cores number of cores for multi-core computation
+#' @param verbose Whether to print progress, default = TRUE
 #'
 #' @return A list of two elements, pacs_converged is a vector of length
 #'   2*n_peaks representing the convergence status of the peak
@@ -81,14 +83,14 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
     pic_matrixbin@x <- rep(1, length = length(pic_matrixbin@x))
   } else {
     ## counts that are >= 2
-    pic_matrix_2 <- Matrix(pic_matrix, sparse = TRUE)
+    pic_matrix_2 <- Matrix::Matrix(pic_matrix, sparse = TRUE)
     pic_matrix_2@x[pic_matrix_2@x == 1] <- 0
 
-    pic_matrix_2 <- drop0(pic_matrix_2)
+    pic_matrix_2 <- Matrix::drop0(pic_matrix_2)
     pic_matrix_2@x <- rep(1, length = length(pic_matrix_2@x))
 
     ## binarized matrix
-    pic_matrixbin <- Matrix(pic_matrix, sparse = TRUE)
+    pic_matrixbin <- Matrix::Matrix(pic_matrix, sparse = TRUE)
     pic_matrixbin@x <- rep(1, length = length(pic_matrixbin@x))
   }
 

@@ -1,5 +1,8 @@
 #' Title Estimate cell type label for new data
 #'
+#' @import Rfast
+#' @import Matrix
+#'
 #' @param r_by_t Region-by cell type matrix generated from a annotated dataset
 #' @param in_r_by_c Input (unannotated) region by cell matrix
 #' @param alpha Weight for negative peaks, default = 1
@@ -18,7 +21,7 @@ estimate_label_default <- function(
   rownames(esti_m5) <- colnames(in_r_by_c)
   colnames(esti_m5) <- colnames(r_by_t)
 
-  if (class(in_r_by_c) == "dgCMatrix") {
+  if (inherits(in_r_by_c, "Matrix")) {
     if (any(in_r_by_c@x != 0 & in_r_by_c@x != 1)) {
       stop("the matrix should be a binary matrix!")
     }
@@ -81,11 +84,14 @@ estimate_label_default <- function(
   }
 }
 
-#' Title Estimate cell type label for new data using all peaks
+#' Estimate cell type label for new data using all peaks as input
 #'
+#' @import Rfast
+#' @import Matrix
 #' @param r_by_t Region-by cell type matrix generated from a annotated dataset
 #' @param in_r_by_c Input (unannotated) region by cell matrix
 #' @param alpha Weight for negative peaks, default = 1
+#' @param pks_sel selected peaks as informative for cell type label prediction
 #'
 #' @return A matrix of cell types by cell matrix, with elements representing
 #'  probability of being in that cell type
@@ -93,8 +99,7 @@ estimate_label_default <- function(
 estimate_label_no_cap_rate_all_pks <- function(
     r_by_t,
     in_r_by_c,
-    # capturing_rate,
-    pks_sel, ## selected peaks as informative for cell type label prediction
+    pks_sel,
     alpha = 1) {
   ## build prediction matrix
 
@@ -103,7 +108,7 @@ estimate_label_no_cap_rate_all_pks <- function(
   rownames(esti_m5) <- colnames(in_r_by_c)
   colnames(esti_m5) <- colnames(r_by_t)
 
-  if (class(in_r_by_c) == "dgCMatrix") {
+  if (inherits(in_r_by_c, "Matrix")) {
     if (any(in_r_by_c@x != 0 & in_r_by_c@x != 1)) {
       stop("the matrix should be a binary matrix!")
     }

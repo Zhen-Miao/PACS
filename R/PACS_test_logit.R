@@ -1,7 +1,9 @@
 ## wrapper for covariate matrix
 
 
-#' Title Profile likelihood ratio test with PACS
+#'  Profile likelihood ratio test with PACS
+#'
+#' @importFrom stats model.matrix
 #'
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells

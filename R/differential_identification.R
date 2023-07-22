@@ -21,11 +21,12 @@ loss_firth_from_wii <- function(wii_sqrt, xdumm) {
 #'
 #' @import tictoc
 #' @importFrom parallel mclapply
+#' @importFrom stats pchisq
 #'
 #' @param x_full Design matrix for the full model
-#' @param theta_estimated_full Estimated theta for the full model
+#' @param theta_estimated_full Estimated coefficients for the full model
 #' @param x_null Design matrix for the null model
-#' @param theta_estimated_null Estimated theta for the null model
+#' @param theta_estimated_null Estimated coefficients for the null model
 #' @param q_vec A vector of capturing probability for each cell
 #' @param c_by_r Cell by region matrix
 #' @param df_test Degree of freedom of the test
@@ -112,6 +113,18 @@ compare_models <- function(x_full, theta_estimated_full,
 
 
 
+#' Internal evaluations only -- Obtain p values using PACS firth model
+#'
+#' @param para_est estimated coefficients values
+#' @param para_reduced_est estimated coefficients values for reduced model
+#' @param c_by_r_full Cell by region count matrix
+#' @param x_full Design matrix for the full model
+#' @param x_null Design matrix for the alternative model
+#' @param q_vec A vector of capturing probability
+#' @param df_test degree of freedom of the test
+#'
+#' @return p values
+#' @noRd
 get_our_firth_p_value <- function(
     para_est, para_reduced_est,
     c_by_r_full, x_full, x_null, q_vec, df_test) {

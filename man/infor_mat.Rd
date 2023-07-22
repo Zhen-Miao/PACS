@@ -9,12 +9,9 @@ infor_mat(xdumm, p_bg, q_vec)
 \arguments{
 \item{xdumm}{A design matrix, X with dummy variables}
 
+\item{p_bg}{A vector of open probability}
+
 \item{q_vec}{A vector of capturing rates}
-
-\item{theta_estimated}{Estimated values of \theta}
-
-\item{y_vec}{A vector of observed open (1) or close (0) state for each cell,
-must match the length of q}
 }
 \value{
 information matrix

@@ -210,7 +210,7 @@ estimate_label_w_capturing_rate <- function(
   rownames(esti_m5) <- colnames(in_r_by_c)
   colnames(esti_m5) <- colnames(r_by_t)
 
-  if (class(in_r_by_c) == "dgCMatrix") {
+  if (inherits(in_r_by_c, "Matrix")) {
     if (any(in_r_by_c@x != 0 & in_r_by_c@x != 1)) {
       stop("the matrix should be a binary matrix!")
     }

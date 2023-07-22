@@ -1,8 +1,9 @@
 ## wrapper for covariate matrix
 
 
-#' Title likelihood ratio test with PACS -- cumulative logit
+#' likelihood ratio test with PACS -- cumulative logit
 #'
+#' @importFrom stats model.matrix
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells
 #' @param formula_full A formula object representing the full model. For

@@ -18,11 +18,11 @@ compare_models(
 \arguments{
 \item{x_full}{Design matrix for the full model}
 
-\item{theta_estimated_full}{Estimated theta for the full model}
+\item{theta_estimated_full}{Estimated coefficients for the full model}
 
 \item{x_null}{Design matrix for the null model}
 
-\item{theta_estimated_null}{Estimated theta for the null model}
+\item{theta_estimated_null}{Estimated coefficients for the null model}
 
 \item{q_vec}{A vector of capturing probability for each cell}
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/PACS_test_logit.R
 \name{pacs_test_logit}
 \alias{pacs_test_logit}
-\title{Title Profile likelihood ratio test with PACS}
+\title{Profile likelihood ratio test with PACS}
 \usage{
 pacs_test_logit(
   covariate_meta.data,
@@ -47,5 +47,5 @@ and pacs_p_val is a vector of length n_peaks representing the p values for
 each peak.
 }
 \description{
-Title Profile likelihood ratio test with PACS
+Profile likelihood ratio test with PACS
 }

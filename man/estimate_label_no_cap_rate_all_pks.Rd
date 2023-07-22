@@ -2,7 +2,7 @@
 % Please edit documentation in R/cell_type_annotation.R
 \name{estimate_label_no_cap_rate_all_pks}
 \alias{estimate_label_no_cap_rate_all_pks}
-\title{Title Estimate cell type label for new data using all peaks}
+\title{Estimate cell type label for new data using all peaks as input}
 \usage{
 estimate_label_no_cap_rate_all_pks(r_by_t, in_r_by_c, pks_sel, alpha = 1)
 }
@@ -11,6 +11,8 @@ estimate_label_no_cap_rate_all_pks(r_by_t, in_r_by_c, pks_sel, alpha = 1)
 
 \item{in_r_by_c}{Input (unannotated) region by cell matrix}
 
+\item{pks_sel}{selected peaks as informative for cell type label prediction}
+
 \item{alpha}{Weight for negative peaks, default = 1}
 }
 \value{
@@ -18,5 +20,5 @@ A matrix of cell types by cell matrix, with elements representing
 probability of being in that cell type
 }
 \description{
-Title Estimate cell type label for new data using all peaks
+Estimate cell type label for new data using all peaks as input
 }

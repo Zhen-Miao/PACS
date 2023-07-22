@@ -9,12 +9,13 @@ loss_grad_pen(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X)
 \arguments{
 \item{xdumm}{A design matrix, X}
 
+\item{p_bg}{A value of open probability}
+
 \item{q_vec}{A vector of capturing probability}
 
-\item{theta_estimated}{Estimated values of \theta}
+\item{inf_mat}{Information matrix}
 
-\item{y_vec}{A vector of observed open (1) or close (0) state for each cell,
-must match the length of q}
+\item{wii_sqrt_X}{sqrt(wii) as a vector times the design matrix}
 }
 \value{
 Gradient of penalized loss ( Invariant prior)

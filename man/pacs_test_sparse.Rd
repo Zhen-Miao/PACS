@@ -49,6 +49,8 @@ null model, we do not
 need to specify unless there are reasons to do so. Default = NULL}
 
 \item{n_cores}{number of cores for multi-core computation}
+
+\item{verbose}{Whether to print progress, default = TRUE}
 }
 \value{
 A list of two elements, pacs_converged is a vector of length

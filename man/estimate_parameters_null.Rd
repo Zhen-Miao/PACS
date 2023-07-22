@@ -27,7 +27,7 @@ estimate_parameters_null(
 \item{mc.cores}{Number of multi-cores, default = 1}
 }
 \value{
-Estimated theta for the null model
+Estimated coefficient for the null model
 }
 \description{
 Estimate parameters for the null model

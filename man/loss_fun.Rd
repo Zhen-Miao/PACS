@@ -7,14 +7,12 @@
 loss_fun(p_bg, q_vec, y_vec)
 }
 \arguments{
+\item{p_bg}{A vector of open probability}
+
 \item{q_vec}{A vector of capturing rates}
 
 \item{y_vec}{A vector of observed open (1) or close (0) state for each cell,
 must match the length of q}
-
-\item{xdumm}{A design matrix, X with dummy variables}
-
-\item{theta_estimated}{Estimated values of \theta}
 }
 \value{
 Log loss value without Firth prior

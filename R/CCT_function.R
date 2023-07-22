@@ -52,7 +52,7 @@ CCT_internal_horizontal <- function(pval_mat) {
   }
 
   is.large_stat <- cct.stat > 1e+15
-  pval <- 1 - pcauchy(cct.stat)
+  pval <- 1 - stats::pcauchy(cct.stat)
   if (sum(is.large_stat) != 0) {
     pval[is.large_stat] <- (1 / cct.stat[is.large_stat]) / pi
   }
@@ -80,7 +80,7 @@ CCT_internal <- function(pvals) {
   if (cct.stat > 1e+15) {
     pval <- (1 / cct.stat) / pi
   } else {
-    pval <- 1 - pcauchy(cct.stat)
+    pval <- 1 - stats::pcauchy(cct.stat)
   }
   return(pval)
 }
@@ -136,7 +136,7 @@ CCT <- function(pvals, weights = NULL) {
   if (cct.stat > 1e+15) {
     pval <- (1 / cct.stat) / pi
   } else {
-    pval <- 1 - pcauchy(cct.stat)
+    pval <- 1 - stats::pcauchy(cct.stat)
   }
   return(pval)
 }

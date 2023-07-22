@@ -2,7 +2,7 @@
 % Please edit documentation in R/PACS_test_cumulative.R
 \name{pacs_test_cumu}
 \alias{pacs_test_cumu}
-\title{Title likelihood ratio test with PACS -- cumulative logit}
+\title{likelihood ratio test with PACS -- cumulative logit}
 \usage{
 pacs_test_cumu(
   covariate_meta.data,
@@ -49,5 +49,5 @@ and pacs_p_val is a vector of length n_peaks representing the p values for
 each peak.
 }
 \description{
-Title likelihood ratio test with PACS -- cumulative logit
+likelihood ratio test with PACS -- cumulative logit
 }

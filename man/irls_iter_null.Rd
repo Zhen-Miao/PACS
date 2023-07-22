@@ -19,7 +19,7 @@ irls_iter_null(
 
 \item{xdumm}{Design matrix}
 
-\item{theta_estimated}{Estimated theta values}
+\item{theta_estimated}{Estimated coefficient values}
 
 \item{hold_zero}{Which element to hold zero in the null model}
 
@@ -28,7 +28,7 @@ irls_iter_null(
 \item{q_vec}{Capturing probability vector}
 }
 \value{
-Converged theta estimate for the null model
+Converged coefficient estimate for the null model
 }
 \description{
 Title Iteratively reweighted least squares function (main function) for the

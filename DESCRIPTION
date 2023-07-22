@@ -5,10 +5,17 @@ Authors@R:
     person("Zhen", "Miao", , "zhenmiaonk@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3255-9517"))
 Description: PACS is a toolkit for snATAC-seq data analysis. The key functionalities of PACS include:
-  Depth correction for snATAC-seq data.
-  Statistical test for complex data design
-  Supervised cell type annotation (with a reference dataset)
-  Batch effect correction enabled by statistical test framework
+  Depth correction for snATAC-seq data;
+  Statistical test for complex data design;
+  Supervised cell type annotation (with a reference dataset);
+  Batch effect correction enabled by statistical test framework.
+Imports: 
+    methods,
+    stats,
+    Matrix,
+    utils,
+    parallel,
+    tictoc
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

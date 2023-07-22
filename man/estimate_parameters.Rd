@@ -24,7 +24,7 @@ estimate_parameters(
 \item{mc.cores}{Number of multi-cores, default = 1}
 }
 \value{
-Estimated theta for the full model
+Estimated coefficient for the full model
 }
 \description{
 Estimate parameters for the full model

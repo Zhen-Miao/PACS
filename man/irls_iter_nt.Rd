@@ -11,14 +11,14 @@ irls_iter_nt(y_vec, xdumm, theta_estimated, stop_criteria = 1e-05, q_vec)
 
 \item{xdumm}{Design matrix}
 
-\item{theta_estimated}{Estimated theta values}
+\item{theta_estimated}{Estimated coefficient values}
 
 \item{stop_criteria}{Resolution to stop, default = 1e-6}
 
 \item{q_vec}{Capturing probability vector}
 }
 \value{
-Converged theta estimate
+Converged coefficient estimate
 }
 \description{
 Title Iteratively reweighted least squares function -- newton method (main function)

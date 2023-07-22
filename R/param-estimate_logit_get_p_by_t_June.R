@@ -15,14 +15,14 @@ is.error <- function(x) inherits(x, "try-error")
 
 #' Title Calculate Loss Function without Firth prior
 #'
-#' @param xdumm A design matrix, X with dummy variables
-#' @param theta_estimated Estimated values of \theta
 #' @param q_vec A vector of capturing rates
 #' @param y_vec A vector of observed open (1) or close (0) state for each cell,
 #'  must match the length of q
+#' @param p_bg A vector of open probability
 #'
 #' @return Log loss value without Firth prior
 #' @export
+#'
 loss_fun <- function(p_bg, q_vec, y_vec) {
   log_pq <- log(q_vec) + log(p_bg)
   log_1_pq <- log(1 - q_vec * p_bg)
@@ -36,7 +36,7 @@ loss_fun <- function(p_bg, q_vec, y_vec) {
 #' Title Gradient of loss function without Firth prior
 #'
 #' @param xdumm A design matrix, X with dummy variables
-#' @param theta_estimated Estimated values of \theta
+#' @param p_bg A value of open probability
 #' @param q_vec A vector of capturing rates
 #' @param y_vec A vector of observed open (1) or close (0) state for each cell,
 #'  must match the length of q
@@ -61,10 +61,8 @@ loss_gradient <- function(xdumm, p_bg, q_vec, y_vec) {
 #' Title Information matrix -- original without Firth prior
 #'
 #' @param xdumm A design matrix, X with dummy variables
-#' @param theta_estimated Estimated values of \theta
+#' @param p_bg A vector of open probability
 #' @param q_vec A vector of capturing rates
-#' @param y_vec A vector of observed open (1) or close (0) state for each cell,
-#'  must match the length of q
 #'
 #' @return information matrix
 #' @export
@@ -99,10 +97,10 @@ compute_wii_sqrt_X <- function(xdumm, p_bg, q_vec) {
 #' Title Gradient of penalized loss ( Invariant prior)
 #'
 #' @param xdumm A design matrix, X
-#' @param theta_estimated Estimated values of \theta
+#' @param p_bg A value of open probability
 #' @param q_vec A vector of capturing probability
-#' @param y_vec A vector of observed open (1) or close (0) state for each cell,
-#'  must match the length of q
+#' @param inf_mat Information matrix
+#' @param wii_sqrt_X sqrt(wii) as a vector times the design matrix
 #'
 #' @return Gradient of penalized loss ( Invariant prior)
 #' @export
@@ -150,12 +148,12 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 #' Title Iteratively reweighted least squares function (main function)
 #'
 #' @param xdumm Design matrix
-#' @param theta_estimated Estimated theta values
+#' @param theta_estimated Estimated coefficient values
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #' @param y_vec Observed counts
 #'
-#' @return Converged theta estimate
+#' @return Converged coefficient estimate
 #' @export
 irls_iter <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-6, q_vec) {
   indi <- 1
@@ -207,12 +205,12 @@ irls_iter <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-6, q_vec
 #'
 #' @param y_vec Observed counts
 #' @param xdumm Design matrix
-#' @param theta_estimated Estimated theta values
+#' @param theta_estimated Estimated coefficient values
 #' @param hold_zero Which element to hold zero in the null model
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #'
-#' @return Converged theta estimate for the null model
+#' @return Converged coefficient estimate for the null model
 #' @export
 irls_iter_null <- function(y_vec, xdumm, theta_estimated,
                            hold_zero, stop_criteria = 1e-6, q_vec) {
@@ -266,12 +264,12 @@ irls_iter_null <- function(y_vec, xdumm, theta_estimated,
 #' Title Iteratively reweighted least squares function -- newton method (main function)
 #'
 #' @param xdumm Design matrix
-#' @param theta_estimated Estimated theta values
+#' @param theta_estimated Estimated coefficient values
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #' @param y_vec Observed counts
 #'
-#' @return Converged theta estimate
+#' @return Converged coefficient estimate
 #' @export
 irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_vec) {
   indi <- 1
@@ -357,12 +355,12 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
 #'
 #' @param y_vec Observed counts
 #' @param xdumm Design matrix
-#' @param theta_estimated Estimated theta values
+#' @param theta_estimated Estimated coefficient values
 #' @param hold_zero Which element to hold zero in the null model
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #'
-#' @return Converged theta estimate for the null model
+#' @return Converged coefficient estimate for the null model
 #' @export
 irls_iter_nt_null <- function(y_vec, xdumm, theta_estimated, hold_zero, stop_criteria = 1e-5, q_vec) {
   indi <- 1
@@ -484,7 +482,7 @@ loss_fun_star <- function(xdumm, p_bg, q_vec, y_vec) {
 #' @param cap_rate_vec A vector of capturing probability
 #' @param mc.cores Number of multi-cores, default = 1
 #'
-#' @return Estimated theta for the full model
+#' @return Estimated coefficient for the full model
 #' @export
 estimate_parameters <- function(
     r_by_c,
@@ -573,7 +571,7 @@ estimate_parameters <- function(
 #' @param cap_rate_vec A vector of capturing probability
 #' @param mc.cores Number of multi-cores, default = 1
 #'
-#' @return Estimated theta for the null model
+#' @return Estimated coefficient for the null model
 #' @export
 estimate_parameters_null <- function(
     r_by_c,
