@@ -1,12 +1,18 @@
 Package: PACS
-Title: What the Package Does (One Line, Title Case)
+Title: Probabilistic model for Accessible Chromatin data in Single Cell
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Zhen", "Miao", , "zhenmiaonk@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-3255-9517"))
+Description: PACS is a toolkit for snATAC-seq data analysis. The key functionalities of PACS include:
+  Depth correction for snATAC-seq data.
+  Statistical test for complex data design
+  Supervised cell type annotation (with a reference dataset)
+  Batch effect correction enabled by statistical test framework
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

@@ -69,7 +69,7 @@ get_r_by_ct_mat_pq <- function(cell_type_set,
     diff2 <- 1
     numiters <- 1
 
-    while ((diff1 > p_acc | diff2 > q_acc) & numiters < n_max_iter) {
+    while ((diff1 > p_acc || diff2 > q_acc) && numiters < n_max_iter) {
       q0 <- itermat_q[numiters, ]
       p0 <- itermat_p[, numiters]
 
@@ -86,9 +86,12 @@ get_r_by_ct_mat_pq <- function(cell_type_set,
       itermat_p[, numiters] <- p0new
       itermat_q[numiters, ] <- q0new
 
-      # print(numiters)
-      diff1 <- sum(abs(itermat_p[, numiters] - itermat_p[, numiters - 1]) / abs(itermat_p[, numiters]), na.rm = T) / n_features_per_cell
-      diff2 <- sum(abs(itermat_q[numiters, ] - itermat_q[numiters - 1, ]) / abs(itermat_q[numiters, ]), na.rm = T) / n_cell_sub
+      diff1 <-
+        sum(abs(itermat_p[, numiters] - itermat_p[, numiters - 1]) /
+         abs(itermat_p[, numiters]), na.rm = TRUE) / n_features_per_cell
+      diff2 <-
+        sum(abs(itermat_q[numiters, ] - itermat_q[numiters - 1, ]) /
+         abs(itermat_q[numiters, ]), na.rm = TRUE) / n_cell_sub
     }
 
     ## remove columns that contain na values
@@ -101,12 +104,11 @@ get_r_by_ct_mat_pq <- function(cell_type_set,
     itermat_q_by_type[cell_names_sub] <- mat_to_shrink2[dim(mat_to_shrink2)[1], ]
 
     ## print progress
-    if(verbose){
+    if (verbose) {
       print(paste(gg, " completed"))
       print(paste("diff1 = ", diff1))
       print(paste("diff2 = ", diff2))
     }
-
   }
   return(list(p_by_t = itermat_p_by_type, q_vec = itermat_q_by_type))
 }
