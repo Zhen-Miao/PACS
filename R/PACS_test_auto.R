@@ -67,8 +67,6 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
     n_peaks_per_round <- min(floor(2^30 / n_cell), n_peaks)
   }
 
-  ########
-  require("Matrix", quietly = TRUE)
 
   if (inherits(pic_matrix, "Matrix")) {
     ## counts that are >= 2
@@ -175,13 +173,13 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       )
       toc()
       rm(pic_dense)
-      gc(verbose = F)
+      gc(verbose = FALSE)
     }
   }
 
 
   ## organize the p values as well as convergence status
-  if (n_p_2 >= 1 & n_p_b >= 1) {
+  if (n_p_2 >= 1 && n_p_b >= 1) {
     ## cumulative part
     if (n_iters > 1) {
       ## p values

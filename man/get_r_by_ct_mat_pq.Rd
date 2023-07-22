@@ -12,7 +12,7 @@ get_r_by_ct_mat_pq(
   p_acc = 5e-04,
   q_acc = 5e-04,
   n_max_iter = 800,
-  verbose = T
+  verbose = TRUE
 )
 }
 \arguments{

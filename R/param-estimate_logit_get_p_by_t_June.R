@@ -1,12 +1,5 @@
 ## param_estimate_logit
 
-## load library
-library("Rfast")
-library(dplyr)
-library("GenomicRanges")
-library(reshape2)
-
-
 
 ## check if it returns error message
 is.error <- function(x) inherits(x, "try-error")
@@ -135,7 +128,8 @@ loss_grad_pen <- function(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X) {
 #' @return information matrix tilda
 #' @export
 compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
-  wii <- ((-1 * p_bg^2 * q_vec^2) + q_vec * (2 * p_bg + y_vec - 1) - y_vec) * p_bg * (1 - p_bg) /
+  wii <- ((-1 * p_bg^2 * q_vec^2) +
+            q_vec * (2 * p_bg + y_vec - 1) - y_vec) * p_bg * (1 - p_bg) /
     ((1 - p_bg * q_vec)^2)
   wii_ <- -1 * as.vector(wii)
   wii_X <- wii_ * xdumm
@@ -155,10 +149,14 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 #'
 #' @return Converged coefficient estimate
 #' @export
-irls_iter <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-6, q_vec) {
+irls_iter <- function(
+    y_vec, xdumm, theta_estimated,
+    stop_criteria = 1e-6, q_vec
+    ) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1 ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
+  conv.stat <- 1
+  ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   while (indi >= stop_criteria && n_iter <= 15) {
     ## compute some values
@@ -174,11 +172,13 @@ irls_iter <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-6, q_vec
       return(theta_n_conv)
     }
 
-    score_total <- loss_grad_pen(xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X) +
+    score_total <- loss_grad_pen(
+      xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X
+      ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
-      inf_mat_inv <- try(solve(inf_mat), silent = T)
+      inf_mat_inv <- try(solve(inf_mat), silent = TRUE)
     } else {
       conv.stat <- 2
       theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
@@ -212,11 +212,13 @@ irls_iter <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-6, q_vec
 #'
 #' @return Converged coefficient estimate for the null model
 #' @export
-irls_iter_null <- function(y_vec, xdumm, theta_estimated,
-                           hold_zero, stop_criteria = 1e-6, q_vec) {
+irls_iter_null <- function(
+    y_vec, xdumm, theta_estimated,
+    hold_zero, stop_criteria = 1e-6, q_vec) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1 ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
+  conv.stat <- 1
+  ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   poi <- setdiff(c(seq_along(theta_estimated)), hold_zero)
   zero_augment <- rep(0, length(hold_zero))
@@ -234,11 +236,13 @@ irls_iter_null <- function(y_vec, xdumm, theta_estimated,
       return(theta_n_conv)
     }
 
-    score_total <- loss_grad_pen(xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X) +
+    score_total <- loss_grad_pen(
+      xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X
+      ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
-      inf_mat_inv <- try(solve(inf_mat[poi, poi]), silent = T)
+      inf_mat_inv <- try(solve(inf_mat[poi, poi]), silent = TRUE)
     } else {
       conv.stat <- 2
       theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
@@ -261,7 +265,7 @@ irls_iter_null <- function(y_vec, xdumm, theta_estimated,
 }
 
 
-#' Title Iteratively reweighted least squares function -- newton method (main function)
+#' Iteratively reweighted least squares function -- newton methods
 #'
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
@@ -271,10 +275,14 @@ irls_iter_null <- function(y_vec, xdumm, theta_estimated,
 #'
 #' @return Converged coefficient estimate
 #' @export
-irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_vec) {
+irls_iter_nt <- function(
+    y_vec, xdumm, theta_estimated,
+    stop_criteria = 1e-5, q_vec
+    ) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1 ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
+  conv.stat <- 1
+  ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   loss_star <- vector(length = 15)
   while (indi >= stop_criteria && n_iter <= 15) {
@@ -289,10 +297,12 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
     loss_star[n_iter] <- loss_fun_star(xdumm, p_bg, q_vec, y_vec)
     # print(loss_star[n_iter])
     ## note, we are still
-    ## using the previous definition of w_ii_sqrt_X, this is because the other way of
-    ## computing this value does not always result in positive values, which cannot
-    ## proceed. If the two working weight both make sense, they should not be too different
-    ## and thus the results should still coverge with this combination
+    ## using the previous definition of w_ii_sqrt_X,
+    ## this is because the other way of computing this value does not always
+    ## result in positive values, which cannot
+    ## proceed. If the two working weight both make sense,
+    ## they should not be too different
+    ## and thus the results should still converge with this combination
 
     inf_mat_tilda <- 0.5 * inf_mat_tilda + 0.5 * inf_mat
     # inf_mat_tilda = inf_mat
@@ -303,11 +313,13 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
       return(theta_n_conv)
     }
 
-    score_total <- loss_grad_pen(xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X) +
+    score_total <- loss_grad_pen(
+      xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
+      ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
-      inf_mat_inv <- try(solve(inf_mat_tilda), silent = T)
+      inf_mat_inv <- try(solve(inf_mat_tilda), silent = TRUE)
     } else {
       conv.stat <- 2
       theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
@@ -318,11 +330,15 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
     # print(paste('theta update'))
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
-    if (n_iter >= 2 && !is.na(loss_star[n_iter]) && loss_star[n_iter] != -Inf) {
+    if (n_iter >= 2 &&
+        !is.na(loss_star[n_iter]) &&
+        loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
-          break ## stop updating if the change is not ver much, consider it reaches minimum
+          break
+          ## stop updating if the change is not ver much,
+          ## consider it reaches minimum
         }
       } else {
         # print('loss not increasing')
@@ -350,7 +366,7 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
 }
 
 
-#' Title Iteratively reweighted least squares function -- newton method (main function)
+#' Iteratively reweighted least squares function for null -- newton method
 #'  for the null model
 #'
 #' @param y_vec Observed counts
@@ -362,10 +378,14 @@ irls_iter_nt <- function(y_vec, xdumm, theta_estimated, stop_criteria = 1e-5, q_
 #'
 #' @return Converged coefficient estimate for the null model
 #' @export
-irls_iter_nt_null <- function(y_vec, xdumm, theta_estimated, hold_zero, stop_criteria = 1e-5, q_vec) {
+irls_iter_nt_null <- function(
+    y_vec, xdumm, theta_estimated, hold_zero,
+    stop_criteria = 1e-5, q_vec
+    ) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1 ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
+  conv.stat <- 1 ## 1 means converge,
+  ## 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   poi <- setdiff(c(seq_along(theta_estimated)), hold_zero)
   zero_augment <- rep(0, length(hold_zero))
@@ -382,9 +402,12 @@ irls_iter_nt_null <- function(y_vec, xdumm, theta_estimated, hold_zero, stop_cri
     loss_star[n_iter] <- loss_fun_star(xdumm, p_bg, q_vec, y_vec)
     # print(loss_star[n_iter])
     ## note, we are still
-    ## using the previous definition of w_ii_sqrt_X, this is because the other way of
-    ## computing this value does not always result in positive values, which cannot
-    ## proceed. If the two working weight both make sense, they should not be too different
+    ## using the previous definition of w_ii_sqrt_X,
+    ## this is because the other way of
+    ## computing this value does not always result in positive values,
+    ## which cannot
+    ## proceed. If the two working weight both make sense,
+    ## they should not be too different
     ## and thus the results should still coverge with this combination
 
     inf_mat_tilda <- 0.5 * inf_mat_tilda + 0.5 * inf_mat
@@ -396,11 +419,13 @@ irls_iter_nt_null <- function(y_vec, xdumm, theta_estimated, hold_zero, stop_cri
       return(theta_n_conv)
     }
 
-    score_total <- loss_grad_pen(xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X) +
+    score_total <- loss_grad_pen(
+      xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
+      ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
-      inf_mat_inv <- try(solve(inf_mat_tilda[poi, poi]), silent = T)
+      inf_mat_inv <- try(solve(inf_mat_tilda[poi, poi]), silent = TRUE)
     } else {
       conv.stat <- 2
       theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
@@ -413,11 +438,15 @@ irls_iter_nt_null <- function(y_vec, xdumm, theta_estimated, hold_zero, stop_cri
     # print(paste('theta update'))
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
-    if (n_iter >= 2 && !is.na(loss_star[n_iter]) && loss_star[n_iter] != -Inf) {
+    if (n_iter >= 2 &&
+        !is.na(loss_star[n_iter]) &&
+        loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
-          break ## stop updating if the change is not ver much, consider it reaches minimum
+          break
+          ## stop updating if the change is not ver much,
+          ## consider it reaches minimum
         }
       } else {
         # print('loss not increasing')
@@ -473,8 +502,10 @@ loss_fun_star <- function(xdumm, p_bg, q_vec, y_vec) {
 
 #' Estimate parameters for the full model
 #'
-#' @import tictoc
+#' @importFrom tictoc tic
+#' @importFrom tictoc toc
 #' @importFrom parallel mclapply
+#' @import Matrix
 #'
 #' @param r_by_c Region by cell matrix
 #' @param design_mat Desing matrix
@@ -500,8 +531,7 @@ estimate_parameters <- function(
 
   r_by_c <- as.list(as.data.frame(r_by_c)) ## now it is cell by region matrix
 
-  tictoc::tic("parameter_estimation")
-  print("running parameter estimation")
+  tictoc::tic("running parameter_estimation")
 
   theta_estimated_one_list <- mclapply(r_by_c,
     FUN = irls_iter,
@@ -509,14 +539,16 @@ estimate_parameters <- function(
     q_vec = cap_rate_vec, mc.cores = mc.cores
   )
 
-  print("running parameter estimation")
   tictoc::toc()
 
   n_divide <- ceiling(n_features / 4)
   o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(cbind, theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
-  o3 <- do.call(cbind, theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
-  o4 <- do.call(cbind, theta_estimated_one_list[(n_divide * 3 + 1):n_features])
+  o2 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
+  o3 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
+  o4 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide * 3 + 1):n_features])
 
   theta_summaries <- cbind(o1, o2, o3, o4)
 
@@ -562,7 +594,7 @@ estimate_parameters <- function(
 #' @importFrom tictoc tic
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
-#'
+#' @import Matrix
 #'
 #' @param r_by_c Region by cell matrix
 #' @param design_mat Desing matrix
@@ -604,9 +636,12 @@ estimate_parameters_null <- function(
 
   n_divide <- ceiling(n_features / 4)
   o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(cbind, theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
-  o3 <- do.call(cbind, theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
-  o4 <- do.call(cbind, theta_estimated_one_list[(n_divide * 3 + 1):n_features])
+  o2 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
+  o3 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
+  o4 <- do.call(cbind,
+                theta_estimated_one_list[(n_divide * 3 + 1):n_features])
 
   theta_summaries <- cbind(o1, o2, o3, o4)
 
@@ -640,7 +675,8 @@ estimate_parameters_null <- function(
       theta_nt <- do.call(cbind, theta_estimated_one_list_nt)
       theta_summaries[, fc_regions] <- theta_nt[, fc_regions]
       fail_converge <- theta_nt[dim(theta_nt)[1], ] != 1
-      print(paste(sum(fail_converge), "regions fail to converge aftere newton"))
+      print(paste(sum(fail_converge),
+                  "regions fail to converge aftere newton"))
     }
   }
 

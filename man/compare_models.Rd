@@ -2,7 +2,7 @@
 % Please edit documentation in R/differential_identification.R
 \name{compare_models}
 \alias{compare_models}
-\title{Title Use gLRT to compare two models and obtain p values}
+\title{Use gLRT to compare two models and obtain p values}
 \usage{
 compare_models(
   x_full,
@@ -36,5 +36,5 @@ compare_models(
 A vector of p values
 }
 \description{
-Title Use gLRT to compare two models and obtain p values
+Use gLRT to compare two models and obtain p values
 }

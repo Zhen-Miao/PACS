@@ -5,11 +5,6 @@
 ## we did not use functions here in the PACS workflow
 ##################################################################
 
-## load packages
-require("Rfast")
-require("dplyr")
-
-
 #' Title Add a pseudo-count to data matrix
 #'
 #' @param r_by_c region by cell matrix
@@ -190,7 +185,8 @@ get_r_by_ct_mat <- function(
 
 
 #' Title Estimate cell type label with capturing rate
-#'
+#' @import Matrix
+#' @importFrom Rfast colsums
 #' @param r_by_t region by type matrix
 #' @param in_r_by_c input region by cell matrix
 #' @param capturing_rate Capturing probability (rate)

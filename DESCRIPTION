@@ -15,7 +15,8 @@ Imports:
     Matrix,
     utils,
     parallel,
-    tictoc
+    tictoc,
+    Rfast
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

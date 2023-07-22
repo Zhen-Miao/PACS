@@ -2,7 +2,7 @@
 % Please edit documentation in R/differential_identification.R
 \name{loss_firth_from_wii}
 \alias{loss_firth_from_wii}
-\title{Title Compute loss function with Firth regularization from Wii matrix}
+\title{Compute loss function with Firth regularization from Wii matrix}
 \usage{
 loss_firth_from_wii(wii_sqrt, xdumm)
 }
@@ -15,5 +15,5 @@ loss_firth_from_wii(wii_sqrt, xdumm)
 Regularized log loss value
 }
 \description{
-Title Compute loss function with Firth regularization from Wii matrix
+Compute loss function with Firth regularization from Wii matrix
 }

@@ -1,6 +1,6 @@
 ### differential_identification
 
-#' Title Compute loss function with Firth regularization from Wii matrix
+#' Compute loss function with Firth regularization from Wii matrix
 #'
 #' @param wii_sqrt The square root of Wii diagonal elements as a vector
 #' @param xdumm Design matrix
@@ -17,9 +17,10 @@ loss_firth_from_wii <- function(wii_sqrt, xdumm) {
 
 
 
-#' Title Use gLRT to compare two models and obtain p values
+#' Use gLRT to compare two models and obtain p values
 #'
-#' @import tictoc
+#' @importFrom tictoc tic
+#' @importFrom tictoc toc
 #' @importFrom parallel mclapply
 #' @importFrom stats pchisq
 #'
@@ -157,8 +158,9 @@ get_our_firth_p_value <- function(
 
 
 
-#' Title Internal evaluation use only -- loss function Without Firth
+#' Internal evaluation use only -- loss function Without Firth
 #'
+#' @importFrom Rfast rowsums
 #' @param p_vec A vector of open probability
 #' @param q_vec A vector of capturing probability
 #' @param y_mat Read count matrix
@@ -182,8 +184,9 @@ loss_fun_simple_pq <- function(p_vec, q_vec, y_mat) {
 
 
 
-#' Title Internal evaluation use only -- PACS Without Firth
+#' Internal evaluation use only -- PACS Without Firth
 #'
+#' @importFrom Rfast rowsums
 #' @param data_matrix_pos Count matrix in foreground group
 #' @param data_matrix_neg Count matrix in background group
 #' @param true_q_pos Capturing probability vector for the foreground group

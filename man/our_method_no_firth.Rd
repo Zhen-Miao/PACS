@@ -2,7 +2,7 @@
 % Please edit documentation in R/differential_identification.R
 \name{our_method_no_firth}
 \alias{our_method_no_firth}
-\title{Title Internal evaluation use only -- PACS Without Firth}
+\title{Internal evaluation use only -- PACS Without Firth}
 \usage{
 our_method_no_firth(data_matrix_pos, data_matrix_neg, true_q_pos, true_q_neg)
 }
@@ -19,5 +19,5 @@ our_method_no_firth(data_matrix_pos, data_matrix_neg, true_q_pos, true_q_neg)
 P values for each cell
 }
 \description{
-Title Internal evaluation use only -- PACS Without Firth
+Internal evaluation use only -- PACS Without Firth
 }

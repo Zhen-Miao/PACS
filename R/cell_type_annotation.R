@@ -1,6 +1,6 @@
 #' Title Estimate cell type label for new data
 #'
-#' @import Rfast
+#' @importFrom Rfast colsums
 #' @import Matrix
 #'
 #' @param r_by_t Region-by cell type matrix generated from a annotated dataset
@@ -86,7 +86,7 @@ estimate_label_default <- function(
 
 #' Estimate cell type label for new data using all peaks as input
 #'
-#' @import Rfast
+#' @importFrom Rfast colsums
 #' @import Matrix
 #' @param r_by_t Region-by cell type matrix generated from a annotated dataset
 #' @param in_r_by_c Input (unannotated) region by cell matrix

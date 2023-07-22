@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{irls_iter_nt}
 \alias{irls_iter_nt}
-\title{Title Iteratively reweighted least squares function -- newton method (main function)}
+\title{Iteratively reweighted least squares function -- newton methods}
 \usage{
 irls_iter_nt(y_vec, xdumm, theta_estimated, stop_criteria = 1e-05, q_vec)
 }
@@ -21,5 +21,5 @@ irls_iter_nt(y_vec, xdumm, theta_estimated, stop_criteria = 1e-05, q_vec)
 Converged coefficient estimate
 }
 \description{
-Title Iteratively reweighted least squares function -- newton method (main function)
+Iteratively reweighted least squares function -- newton methods
 }

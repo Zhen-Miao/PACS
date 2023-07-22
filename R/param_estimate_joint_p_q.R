@@ -30,7 +30,7 @@ get_r_by_ct_mat_pq <- function(cell_type_set,
                                p_acc = 0.0005,
                                q_acc = 0.0005,
                                n_max_iter = 800,
-                               verbose = T) {
+                               verbose = TRUE) {
   ## require cell names provided
   if (is.null(colnames(r_by_c))) {
     stop("the peak by cell matrix has to have column names")
