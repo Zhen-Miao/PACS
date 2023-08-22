@@ -1,0 +1,82 @@
+---
+title: "Vignette 2. Differentially Accessible Region (DAR) Identification with PACS"
+output: html_document
+date: "2023-08-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/Users/Shared/Example_dataset1/')
+```
+
+### Content
+
+This Vignette contains an example to conduct Differentially Accessible Region (DAR) Identification with PACS. 
+
+### Required libraries
+Please make sure the following libraries are installed and loaded for the analysis. 
+```{r eval=FALSE}
+library('data.table')
+library('Matrix')
+library('PICsnATAC')
+library('PACS')
+library('Rfast')
+```
+
+### Input files
+
+The PACS cell type annotation framework requires the following input files:
+
+  * A peak by cell matrix for the dataset (`data_mat`)
+  * Metadata (`meta_data`) that could include cell type label, batch lable, etc. 
+
+Note, we allow for quantitative (0,1,2,3,...) or binary (0/1) data input. But please note, the quantitative data matrix should be based on fragment count of paired-insertion count. If you wonder why, please refer to our
+[`PIC_snATAC` package](https://github.com/Zhen-Miao/PIC-snATAC) and [manuscript](https://github.com/Zhen-Miao/PIC-snATAC). 
+Clustering and annotation can be conducted with Seurat, ArchR, snapATAC, or other pipelines. 
+
+### Cell-specific capturing rate estimation
+As described in the manuscript, in the snATAC-seq data, each cell may have largely variant 
+capturing rate (sequencing depth), and here, we will compute the caputuring rate in each cell
+while separating the effect of cell type-specific open probability
+```{r eval=FALSE}
+ctypes = unique(cell_types)
+r_by_ct_out = get_r_by_ct_mat_pq(cell_type_set = ctypes,
+                                 r_by_c = ref_mat,
+                                 cell_type_labels = cell_types,
+                                 n_features_per_cell = dim(ref_mat)[1])
+```
+
+The object `r_by_ct_out` is a list with two elements,
+
+* **p_by_t** Peak by cell type matrix, each element represents the open probability of the peak in the corresponding cell type
+* **q_vec** A vector of cell-specific capturing rate
+
+The second element will be the input for DAR analysis
+
+### DAR test
+We need to include formula for the Likelihood Ratio Test (LRT). Assume in the metadata, we have 
+two columns,  `cell_type` and `batch`, then the formula for full model and null model can be specified
+as the below example:
+
+```{r eval=FALSE}
+   p_vals = pacs_test_sparse(
+     covariate_meta.data = meta.data,
+     formula_full = ~ factor(cell_type) + factor(batch),
+     formula_null = ~ factor(batch),
+     pic_matrix = data_mat,
+     cap_rates = r_by_ct_out$q_vec
+   )
+```
+
+Note, there are some additional optional parameters we can set for the function:
+ 
+ * `n_peaks_per_round` The number of peaks to be tested in each round. Can be left unspecified, where
+ PACS can detect the number automatically so that it does not break R. For large dataset, we
+ can set this value to be smaller.
+ * `T_proportion_cutoff` Defualt = 0.2, or 20%. The minimum proportion of high density counts (Z>=2) so that we consider the cumulative models. If there is not enough high density counts, we will implement the binary model which will be faster to compute.
+
+
+### Reference
+If you used PACS in your analysis, please cite our manuscript:
+
+Miao, Z., Wang, J., Park, K., Kuang, D., & Kim, J. (2023). Model-based compound hypothesis testing for snATAC-seq data with PACS. _bioRxiv_, 2023-07.
