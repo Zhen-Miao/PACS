@@ -48,3 +48,7 @@ This is a basic example which shows you how to run PACS common workflow:
 ## Vignette and Interactive Notebooks
 
 Notebook 1: [Run PIC counting on PBMC data.](https://github.com/Zhen-Miao/PIC-snATAC/blob/main/vignettes/Run_PIC_counting_on_pbmc_3k_data.ipynb)
+
+Vignette 1: [Cell type annotation with PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
+
+Vignette 2: [Differentially Accessible Region (DAR) Identification with PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
