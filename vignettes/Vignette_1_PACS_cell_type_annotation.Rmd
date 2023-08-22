@@ -1,0 +1,86 @@
+---
+title: "Vignette 1. Cell type annotation with PACS"
+output: html_document
+date: "2023-08-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/Users/Shared/Example_dataset1/')
+```
+
+### Content
+
+This Vignette contains an example to conduct cell type annotation with PACS. To conduct cell type 
+annotation, we need to have a reference dataset with cell type annotated, and a new dataset where
+we want to infer the cell type labels for each cell. 
+
+### Required libraries
+Please make sure the following libraries are installed and loaded for the analysis. 
+```{r eval=FALSE}
+library('data.table')
+library('Matrix')
+library('PICsnATAC')
+library('PACS')
+library('Rfast')
+```
+
+### Input files
+
+The PACS cell type annotation framework requires the following input files:
+
+  * Reference peak by cell matrix (`ref_mat`)
+  * Cell type labels for the reference data (`cell_types`)
+  * Target peak by cell matrix that we want to obtain cell type labels (`tar_mat`)
+
+Note, the two data matrices should have the same set of features (peaks), and please refer to our
+[`PIC_snATAC` package](https://github.com/Zhen-Miao/PIC-snATAC) for obtaining data matrix. 
+Clustering and annotation can be conducted with Seurat, ArchR, snapATAC, or other pipelines. 
+
+### Cell-specific capturing rate estimation
+As described in the manuscript, in the snATAC-seq data, each cell may have largely variant 
+capturing rate (sequencing depth), and here, we will compute the caputuring rate in each cell
+while separating the effect of cell type-specific open probability
+```{r eval=FALSE}
+ctypes = unique(cell_types)
+r_by_ct_out = get_r_by_ct_mat_pq(cell_type_set = ctypes,
+                                 r_by_c = ref_mat,
+                                 cell_type_labels = cell_types,
+                                 n_features_per_cell = dim(ref_mat)[1])
+```
+
+The object `r_by_ct_out` is a list with two elements,
+
+* **p_by_t** Peak by cell type matrix, each element represents the open probability of the peak in the corresponding cell type
+* **q_vec** A vector of cell-specific capturing rate
+
+The first element will be the input for annotating cell type labels of new dataset
+
+### Identify informative features 
+We only choose a subset of features that are informative for distinguish different cell types. 
+A rule of thumb is to choose features based on their standard deviation across cell types.
+
+```{r eval=FALSE}
+p_sd = sqrt(Rfast::rowVars(r_by_ct_out$p_by_t))
+pk_sel = p_sd > quantile(p_sd, 0.5) ## top 50% highly variable features
+```
+
+### Cell type annotation
+
+```{r eval=FALSE}
+  ## get the likelihood for each cell type
+  est_mat = estimate_label_no_cap_rate(r_by_t = r_by_ct_out$p_by_t[pk_sel,],
+                                       in_r_by_c = tar_mat[pk_sel,])
+
+  ## identify the most probable cell type
+  esti_ctype_fir = Rfast::rownth(est_mat,rep(1, length = dim(est_mat)[1]),
+                                 num.of.nths = 1,descending = TRUE,
+                                 index.return = TRUE, parallel = FALSE)
+  esti_ctype_labels = ctypes[esti_ctype_fir]
+```
+  
+
+### Reference
+If you used PACS in your analysis, please cite our manuscript:
+
+Miao, Z., Wang, J., Park, K., Kuang, D., & Kim, J. (2023). Model-based compound hypothesis testing for snATAC-seq data with PACS. _bioRxiv_, 2023-07.
