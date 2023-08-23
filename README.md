@@ -31,8 +31,15 @@ devtools::install_github("Zhen-Miao/PACS")
 This is a basic example which shows you how to run PACS common workflow:
 
 ``` r
-# library(PACS)
-## basic example code
+library(PACS)
+
+p_vals = pacs_test_sparse(
+     covariate_meta.data = meta.data,
+     formula_full = ~ factor(cell_type) + factor(batch),
+     formula_null = ~ factor(batch),
+     pic_matrix = data_mat,
+     cap_rates = capturing_probability
+   )
 ```
 
 ## Vignette and Interactive Notebooks
