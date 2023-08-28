@@ -44,11 +44,11 @@ p_vals = pacs_test_sparse(
 
 ## Vignette and Interactive Notebooks
 
-Notebook 1: [Run PIC counting on PBMC
-data.](https://github.com/Zhen-Miao/PIC-snATAC/blob/main/vignettes/Run_PIC_counting_on_pbmc_3k_data.ipynb)
-
 Vignette 1: [Cell type annotation with
 PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
 
 Vignette 2: [Differentially Accessible Region (DAR) Identification with
 PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
+
+Notebook 1: [Type 1 error and power evaluation in real data
+.](https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Notebook_1_Test_For_Sens_Spec_real_kidney_data.ipynb)
