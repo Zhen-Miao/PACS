@@ -3,5 +3,4 @@
 *.html linguist-vendored
 
 # Apply override to all files and directories in the directory
-man/** linguist-documentation
-analysis_codes/** linguist-documentation
+vignettes/** linguist-documentation
