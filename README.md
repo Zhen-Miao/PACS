@@ -3,13 +3,21 @@
 
 # PACS
 
+<figure>
+<img src="man/figures/README-PACS_illustration.svg"
+alt="Illustration of PACS framework." />
+<figcaption aria-hidden="true">Illustration of PACS
+framework.</figcaption>
+</figure>
+
 <!-- badges: start -->
 <!-- badges: end -->
 
 ## PACS (Probabilistic model for Accessible Chromatin data in Single Cell)
 
-PACS is a toolkit for snATAC-seq data analysis. The key functionalities
-of PACS include:
+PACS is a toolkit for snATAC-seq data analysis.
+
+The key functionalities of PACS include:
 
 1)  Depth correction for snATAC-seq data.
 2)  Statistical test for complex data design
