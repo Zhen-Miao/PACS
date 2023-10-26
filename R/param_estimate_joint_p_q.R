@@ -2,23 +2,27 @@
 
 
 #' Get region (peak) by cell type matrix and per cell capturing rate
-#' @description For a snATAC-seq (binary) dataset, compute the peak-specific open probability
+#' @description For a snATAC-seq (binary) dataset, compute the peak-specific
+#'  open probability
 #'  and cell-specific capturing rates
 #'
 #' @importFrom methods is
 #' @importFrom methods as
+#' @importFrom Matrix drop0
 #'
 #' @param cell_type_set A vector containing all cell types
 #' @param r_by_c Input matrix, region (peak) by cell
 #' @param cell_type_labels A vector containing cell type labels
-#' @param n_features_per_cell The number of features in the matrix, can be calculated by nrow(r_by_c)
+#' @param n_features_per_cell The number of features in the matrix, can be
+#'   calculated by nrow(r_by_c)
 #' @param p_acc The accuracy of p, default specified as 0.0005
 #' @param q_acc The accuracy of q, default specified as 0.0005
 #' @param n_max_iter The maximum iteration, default = 800
 #' @param verbose Whether to output information on processing status
 #'
 #' @return A list with two elements, \itemize{
-#'   \item p_by_t Peak by cell type matrix, each element represents the open probability of the peak in the corresponding cell type
+#'   \item p_by_t Peak by cell type matrix, each element represents
+#'     the open probability of the peak in the corresponding cell type
 #'   \item q_vec A vector of cell-specific capturing rate
 #' }
 #' @export
@@ -36,21 +40,33 @@ get_r_by_ct_mat_pq <- function(cell_type_set,
     stop("the peak by cell matrix has to have column names")
   }
 
+  ## require matched number of cells
+  if(length(cell_type_labels) != ncol(r_by_c)){
+    stop("please make sure cell type labels match N_cells
+         in cell by region matrix")
+  }
+
   ## save data to matrix
   itermat_q_by_type <- vector(length = dim(r_by_c)[2])
   names(itermat_q_by_type) <- colnames(r_by_c)
-  itermat_p_by_type <- matrix(nrow = n_features_per_cell, ncol = length(cell_type_set))
+  itermat_p_by_type <- matrix(nrow = n_features_per_cell,
+                              ncol = length(cell_type_set))
   colnames(itermat_p_by_type) <- cell_type_set
 
-  p_by_t_new <- matrix(nrow = n_features_per_cell, ncol = length(cell_type_set))
+  p_by_t_new <- matrix(nrow = n_features_per_cell,
+                       ncol = length(cell_type_set))
   colnames(p_by_t_new) <- cell_type_set
 
 
   ## make the matrix binary
   if (!is(r_by_c, "sparseMatrix")) {
-    as(r_by_c, "sparseMatrix")
+    r_by_c <- as(r_by_c, "sparseMatrix")
   }
-  r_by_c@x <- rep(r_by_c@x, length = length(r_by_c@x))
+  if (any(r_by_c@x != 1)) {
+    r_by_c = Matrix::drop0(r_by_c)
+    r_by_c@x <- rep(1, length = length(r_by_c@x))
+  }
+
 
   ## for each cell type
   for (gg in cell_type_set) {

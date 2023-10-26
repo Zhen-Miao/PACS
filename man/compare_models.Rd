@@ -33,7 +33,7 @@ compare_models(
 \item{mc.cores}{Number of cores in multi-core computing}
 }
 \value{
-A vector of p values
+A vector of p values based on gLRT
 }
 \description{
 Use gLRT to compare two models and obtain p values

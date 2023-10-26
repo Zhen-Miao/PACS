@@ -11,7 +11,7 @@ is.error <- function(x) inherits(x, "try-error")
 #' @param q_vec A vector of capturing rates
 #' @param y_vec A vector of observed open (1) or close (0) state for each cell,
 #'  must match the length of q
-#' @param p_bg A vector of open probability
+#' @param p_bg A vector of open probability for cell type group g
 #'
 #' @return Log loss value without Firth prior
 #' @export
@@ -34,7 +34,8 @@ loss_fun <- function(p_bg, q_vec, y_vec) {
 #' @param y_vec A vector of observed open (1) or close (0) state for each cell,
 #'  must match the length of q
 #'
-#' @return The first order derivative of the loss function without Firth prior
+#' @return The first order derivative of the loss function without Firth prior,
+#'  a vector
 #' @export
 loss_gradient <- function(xdumm, p_bg, q_vec, y_vec) {
   ## the first part
@@ -136,7 +137,6 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
   inf_m <- crossprod(xdumm, wii_X)
   return(inf_m)
 }
-
 
 
 #' Title Iteratively reweighted least squares function (main function)
