@@ -7,7 +7,7 @@
 loss_fun(p_bg, q_vec, y_vec)
 }
 \arguments{
-\item{p_bg}{A vector of open probability}
+\item{p_bg}{A vector of open probability for cell type group g}
 
 \item{q_vec}{A vector of capturing rates}
 

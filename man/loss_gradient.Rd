@@ -17,7 +17,8 @@ loss_gradient(xdumm, p_bg, q_vec, y_vec)
 must match the length of q}
 }
 \value{
-The first order derivative of the loss function without Firth prior
+The first order derivative of the loss function without Firth prior,
+a vector
 }
 \description{
 Title Gradient of loss function without Firth prior

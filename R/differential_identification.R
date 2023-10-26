@@ -33,7 +33,7 @@ loss_firth_from_wii <- function(wii_sqrt, xdumm) {
 #' @param df_test Degree of freedom of the test
 #' @param mc.cores Number of cores in multi-core computing
 #'
-#' @return A vector of p values
+#' @return A vector of p values based on gLRT
 #' @export
 compare_models <- function(x_full, theta_estimated_full,
                            x_null, theta_estimated_null,
