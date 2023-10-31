@@ -13,8 +13,6 @@
 #'
 #' @return A vector of p value for each feature after Cauchy combination
 #' @export
-#'
-#' @examples
 CCT_internal_horizontal <- function(pval_mat) {
   ## each row is a feature, each column is one p value to be integrated
 
@@ -88,8 +86,6 @@ CCT_internal_horizontal <- function(pval_mat) {
 #' @param pvals A vector of p values to be combined
 #'
 #' @return A single numeric value of p value after combination
-#' @export
-#'
 #' @noRd
 CCT_internal <- function(pvals) {
   weights <- rep(1 / length(pvals), length(pvals))

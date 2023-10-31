@@ -206,7 +206,6 @@ get_r_by_ct_mat <- function(
 #' @return A matrix of cell types by cell matrix, with element representing
 #'  probability of being in that cell type
 #' @noRd
-
 estimate_label_w_capturing_rate <- function(
     r_by_t,
     in_r_by_c,
