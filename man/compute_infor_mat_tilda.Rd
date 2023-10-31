@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{compute_infor_mat_tilda}
 \alias{compute_infor_mat_tilda}
-\title{Title compute_information matrix tilda}
+\title{compute_information matrix tilda}
 \usage{
 compute_infor_mat_tilda(xdumm, p_bg, q_vec, y_vec)
 }
@@ -20,5 +20,5 @@ must match the length of q}
 information matrix tilda
 }
 \description{
-Title compute_information matrix tilda
+compute_information matrix tilda
 }

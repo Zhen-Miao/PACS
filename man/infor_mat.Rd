@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{infor_mat}
 \alias{infor_mat}
-\title{Title Information matrix -- original without Firth prior}
+\title{Information matrix -- original without Firth prior}
 \usage{
 infor_mat(xdumm, p_bg, q_vec)
 }
@@ -17,5 +17,5 @@ infor_mat(xdumm, p_bg, q_vec)
 information matrix
 }
 \description{
-Title Information matrix -- original without Firth prior
+Information matrix -- original without Firth prior
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{loss_fun_star}
 \alias{loss_fun_star}
-\title{Title Regularized log loss function}
+\title{Regularized log loss function}
 \usage{
 loss_fun_star(xdumm, p_bg, q_vec, y_vec)
 }
@@ -19,5 +19,5 @@ loss_fun_star(xdumm, p_bg, q_vec, y_vec)
 Regularized log loss
 }
 \description{
-Title Regularized log loss function
+Regularized log loss function
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{irls_iter_null}
 \alias{irls_iter_null}
-\title{Title Iteratively reweighted least squares function (main function) for the
+\title{Iteratively reweighted least squares function (main function) for the
 null model}
 \usage{
 irls_iter_null(
@@ -31,6 +31,6 @@ irls_iter_null(
 Converged coefficient estimate for the null model
 }
 \description{
-Title Iteratively reweighted least squares function (main function) for the
+Iteratively reweighted least squares function (main function) for the
 null model
 }

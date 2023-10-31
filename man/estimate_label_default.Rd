@@ -2,7 +2,7 @@
 % Please edit documentation in R/cell_type_annotation.R
 \name{estimate_label_default}
 \alias{estimate_label_default}
-\title{Title Estimate cell type label for new data}
+\title{Estimate cell type label for new data}
 \usage{
 estimate_label_default(r_by_t, in_r_by_c, alpha = 1)
 }
@@ -18,5 +18,5 @@ A matrix of cell types by cell matrix, with elements representing
 probability of being in that cell type
 }
 \description{
-Title Estimate cell type label for new data
+Estimate cell type label for new data
 }

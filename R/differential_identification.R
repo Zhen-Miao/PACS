@@ -23,6 +23,7 @@ loss_firth_from_wii <- function(wii_sqrt, xdumm) {
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
 #' @importFrom stats pchisq
+#' @importFrom methods is
 #'
 #' @param x_full Design matrix for the full model
 #' @param theta_estimated_full Estimated coefficients for the full model
@@ -187,6 +188,7 @@ loss_fun_simple_pq <- function(p_vec, q_vec, y_mat) {
 #' Internal evaluation use only -- PACS Without Firth
 #'
 #' @importFrom Rfast rowsums
+#' @importFrom methods is
 #' @param data_matrix_pos Count matrix in foreground group
 #' @param data_matrix_neg Count matrix in background group
 #' @param true_q_pos Capturing probability vector for the foreground group

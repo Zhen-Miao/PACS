@@ -6,7 +6,7 @@ is.error <- function(x) inherits(x, "try-error")
 
 ## loss function -- original
 
-#' Title Calculate Loss Function without Firth prior
+#' Calculate Loss Function without Firth prior
 #'
 #' @param q_vec A vector of capturing rates
 #' @param y_vec A vector of observed open (1) or close (0) state for each cell,
@@ -26,7 +26,7 @@ loss_fun <- function(p_bg, q_vec, y_vec) {
 
 
 
-#' Title Gradient of loss function without Firth prior
+#' Gradient of loss function without Firth prior
 #'
 #' @param xdumm A design matrix, X with dummy variables
 #' @param p_bg A value of open probability
@@ -52,7 +52,7 @@ loss_gradient <- function(xdumm, p_bg, q_vec, y_vec) {
 }
 
 
-#' Title Information matrix -- original without Firth prior
+#' Information matrix -- original without Firth prior
 #'
 #' @param xdumm A design matrix, X with dummy variables
 #' @param p_bg A vector of open probability
@@ -70,7 +70,7 @@ infor_mat <- function(xdumm, p_bg, q_vec) {
 }
 
 
-#' Title Compute sqrt(Wii) * X
+#' Compute sqrt(Wii) * X
 #'
 #' @param xdumm Design matrix
 #' @param p_bg open probability vector
@@ -88,7 +88,7 @@ compute_wii_sqrt_X <- function(xdumm, p_bg, q_vec) {
 
 
 ##
-#' Title Gradient of penalized loss ( Invariant prior)
+#' Gradient of penalized loss ( Invariant prior)
 #'
 #' @param xdumm A design matrix, X
 #' @param p_bg A value of open probability
@@ -118,7 +118,7 @@ loss_grad_pen <- function(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X) {
 
 
 
-#' Title compute_information matrix tilda
+#' compute_information matrix tilda
 #'
 #' @param xdumm A design matrix, X
 #' @param p_bg open probability vector
@@ -139,7 +139,7 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 }
 
 
-#' Title Iteratively reweighted least squares function (main function)
+#' Iteratively reweighted least squares function (main function)
 #'
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
@@ -200,7 +200,7 @@ irls_iter <- function(
 }
 
 
-#' Title Iteratively reweighted least squares function (main function) for the
+#' Iteratively reweighted least squares function (main function) for the
 #'  null model
 #'
 #' @param y_vec Observed counts
@@ -475,7 +475,7 @@ irls_iter_nt_null <- function(
 
 
 
-#' Title Regularized log loss function
+#' Regularized log loss function
 #'
 #' @param xdumm Observed counts
 #' @param p_bg Vector of open probability
@@ -595,6 +595,7 @@ estimate_parameters <- function(
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
 #' @import Matrix
+#' @importFrom methods is
 #'
 #' @param r_by_c Region by cell matrix
 #' @param design_mat Desing matrix

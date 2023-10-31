@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{loss_fun}
 \alias{loss_fun}
-\title{Title Calculate Loss Function without Firth prior}
+\title{Calculate Loss Function without Firth prior}
 \usage{
 loss_fun(p_bg, q_vec, y_vec)
 }
@@ -18,5 +18,5 @@ must match the length of q}
 Log loss value without Firth prior
 }
 \description{
-Title Calculate Loss Function without Firth prior
+Calculate Loss Function without Firth prior
 }
