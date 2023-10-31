@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{loss_gradient}
 \alias{loss_gradient}
-\title{Title Gradient of loss function without Firth prior}
+\title{Gradient of loss function without Firth prior}
 \usage{
 loss_gradient(xdumm, p_bg, q_vec, y_vec)
 }
@@ -21,5 +21,5 @@ The first order derivative of the loss function without Firth prior,
 a vector
 }
 \description{
-Title Gradient of loss function without Firth prior
+Gradient of loss function without Firth prior
 }

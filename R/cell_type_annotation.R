@@ -1,4 +1,6 @@
-#' Title Estimate cell type label for new data
+## Functions for cell type label annotation
+
+#' Estimate cell type label for new data
 #'
 #' @importFrom Rfast colsums
 #' @import Matrix
@@ -35,7 +37,6 @@ estimate_label_default <- function(
   capturing_rate_mat <- t(outer(n_reads, sum_prob, "/"))
   capturing_rate_mat[capturing_rate_mat > 0.9995] <- 0.9995
   capturing_rate_mat[capturing_rate_mat < 0.00005] <- 0.00005
-
 
   if (as.numeric(dim(in_r_by_c)[1]) * as.numeric(dim(in_r_by_c)[2])
       > (2^31 - 1)) {
@@ -126,7 +127,6 @@ estimate_label_no_cap_rate_all_pks <- function(
   ## filter peaks to keep only relevant ones
   r_by_t <- r_by_t[pks_sel, ]
   in_r_by_c <- in_r_by_c[pks_sel, ]
-
 
   if (as.numeric(dim(in_r_by_c)[1]) * as.numeric(dim(in_r_by_c)[2]) > (2^31 - 1)) {
     ## need to split

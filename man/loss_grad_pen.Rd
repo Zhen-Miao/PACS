@@ -2,7 +2,7 @@
 % Please edit documentation in R/param-estimate_logit_get_p_by_t_June.R
 \name{loss_grad_pen}
 \alias{loss_grad_pen}
-\title{Title Gradient of penalized loss ( Invariant prior)}
+\title{Gradient of penalized loss ( Invariant prior)}
 \usage{
 loss_grad_pen(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X)
 }
@@ -21,5 +21,5 @@ loss_grad_pen(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X)
 Gradient of penalized loss ( Invariant prior)
 }
 \description{
-Title Gradient of penalized loss ( Invariant prior)
+Gradient of penalized loss ( Invariant prior)
 }

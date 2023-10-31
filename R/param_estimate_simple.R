@@ -1,11 +1,15 @@
 ## param_estimate_simple
 
 ##################################################################
-## The functions in this file are only for comparing with other methods
+## The functions in this file are only for method comparisons
 ## we did not use functions here in the PACS workflow
 ##################################################################
 
-#' Title Add a pseudo-count to data matrix
+#' Add a pseudo-count to data matrix
+#'
+#' Please note: This function is only for method comparison purposes,
+#' we did not use this function in the PACS workflow
+#'
 #'
 #' @param r_by_c region by cell matrix
 #' @param group_set A set of cell type labels
@@ -78,7 +82,10 @@ add_pseudo_count <- function(
 }
 
 
-#' Title get_r_by_ct_mat
+#' get_r_by_ct_mat
+#'
+#' Please note: This function is only for method comparison purposes,
+#' we did not use this function in the PACS workflow
 #'
 #' @param r_by_c region by cell matrix
 #' @param group_set A set of cell type labels
@@ -184,7 +191,11 @@ get_r_by_ct_mat <- function(
 }
 
 
-#' Title Estimate cell type label with capturing rate
+#' Estimate cell type label with capturing rate
+#'
+#' Please note: This function is only for method comparison purposes,
+#' we did not use this function in the PACS workflow
+#'
 #' @import Matrix
 #' @importFrom Rfast colsums
 #' @param r_by_t region by type matrix
