@@ -130,7 +130,7 @@ loss_grad_pen <- function(xdumm, p_bg, q_vec, inf_mat, wii_sqrt_X) {
 #' @export
 compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
   wii <- ((-1 * p_bg^2 * q_vec^2) +
-            q_vec * (2 * p_bg + y_vec - 1) - y_vec) * p_bg * (1 - p_bg) /
+    q_vec * (2 * p_bg + y_vec - 1) - y_vec) * p_bg * (1 - p_bg) /
     ((1 - p_bg * q_vec)^2)
   wii_ <- -1 * as.vector(wii)
   wii_X <- wii_ * xdumm
@@ -151,13 +151,11 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 #' @export
 irls_iter <- function(
     y_vec, xdumm, theta_estimated,
-    stop_criteria = 1e-6, q_vec
-    ) {
+    stop_criteria = 1e-6, q_vec) {
   indi <- 1
   n_iter <- 1
   conv.stat <- 1
   ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
-  # y_vec = as.vector(y_vec)
   while (indi >= stop_criteria && n_iter <= 15) {
     ## compute some values
     x_times_theta <- xdumm %*% theta_estimated
@@ -173,8 +171,9 @@ irls_iter <- function(
     }
 
     score_total <- loss_grad_pen(
-      xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X
-      ) +
+      xdumm, p_bg,
+      q_vec = q_vec, inf_mat, wii_sqrt_X
+    ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
@@ -219,7 +218,6 @@ irls_iter_null <- function(
   n_iter <- 1
   conv.stat <- 1
   ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
-  # y_vec = as.vector(y_vec)
   poi <- setdiff(c(seq_along(theta_estimated)), hold_zero)
   zero_augment <- rep(0, length(hold_zero))
   while (indi >= stop_criteria && n_iter <= 15) {
@@ -237,8 +235,9 @@ irls_iter_null <- function(
     }
 
     score_total <- loss_grad_pen(
-      xdumm, p_bg, q_vec = q_vec, inf_mat, wii_sqrt_X
-      ) +
+      xdumm, p_bg,
+      q_vec = q_vec, inf_mat, wii_sqrt_X
+    ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
@@ -277,8 +276,7 @@ irls_iter_null <- function(
 #' @export
 irls_iter_nt <- function(
     y_vec, xdumm, theta_estimated,
-    stop_criteria = 1e-5, q_vec
-    ) {
+    stop_criteria = 1e-5, q_vec) {
   indi <- 1
   n_iter <- 1
   conv.stat <- 1
@@ -314,8 +312,9 @@ irls_iter_nt <- function(
     }
 
     score_total <- loss_grad_pen(
-      xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
-      ) +
+      xdumm, p_bg,
+      q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
+    ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
@@ -331,8 +330,8 @@ irls_iter_nt <- function(
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
     if (n_iter >= 2 &&
-        !is.na(loss_star[n_iter]) &&
-        loss_star[n_iter] != -Inf) {
+      !is.na(loss_star[n_iter]) &&
+      loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
@@ -380,8 +379,7 @@ irls_iter_nt <- function(
 #' @export
 irls_iter_nt_null <- function(
     y_vec, xdumm, theta_estimated, hold_zero,
-    stop_criteria = 1e-5, q_vec
-    ) {
+    stop_criteria = 1e-5, q_vec) {
   indi <- 1
   n_iter <- 1
   conv.stat <- 1 ## 1 means converge,
@@ -420,8 +418,9 @@ irls_iter_nt_null <- function(
     }
 
     score_total <- loss_grad_pen(
-      xdumm, p_bg, q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
-      ) +
+      xdumm, p_bg,
+      q_vec = q_vec, inf_mat_tilda, wii_sqrt_X
+    ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
     if (!anyNA(score_total)) {
@@ -439,8 +438,8 @@ irls_iter_nt_null <- function(
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
     if (n_iter >= 2 &&
-        !is.na(loss_star[n_iter]) &&
-        loss_star[n_iter] != -Inf) {
+      !is.na(loss_star[n_iter]) &&
+      loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
@@ -543,12 +542,18 @@ estimate_parameters <- function(
 
   n_divide <- ceiling(n_features / 4)
   o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
-  o3 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
-  o4 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide * 3 + 1):n_features])
+  o2 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
+  )
+  o3 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
+  )
+  o4 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide * 3 + 1):n_features]
+  )
 
   theta_summaries <- cbind(o1, o2, o3, o4)
 
@@ -562,7 +567,6 @@ estimate_parameters <- function(
   if (sum(fail_converge) == 0) {
     return(theta_summaries)
   } else {
-
     r_by_c <- r_by_c[fc_regions]
 
     par_initial <- -1 * par_initial
@@ -637,12 +641,18 @@ estimate_parameters_null <- function(
 
   n_divide <- ceiling(n_features / 4)
   o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide + 1):(n_divide * 2)])
-  o3 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)])
-  o4 <- do.call(cbind,
-                theta_estimated_one_list[(n_divide * 3 + 1):n_features])
+  o2 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
+  )
+  o3 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
+  )
+  o4 <- do.call(
+    cbind,
+    theta_estimated_one_list[(n_divide * 3 + 1):n_features]
+  )
 
   theta_summaries <- cbind(o1, o2, o3, o4)
 
@@ -656,7 +666,6 @@ estimate_parameters_null <- function(
   if (sum(fail_converge) == 0) {
     return(theta_summaries)
   } else {
-
     r_by_c <- r_by_c[fc_regions]
 
     par_initial <- -1 * par_initial
@@ -676,8 +685,10 @@ estimate_parameters_null <- function(
       theta_nt <- do.call(cbind, theta_estimated_one_list_nt)
       theta_summaries[, fc_regions] <- theta_nt[, fc_regions]
       fail_converge <- theta_nt[dim(theta_nt)[1], ] != 1
-      print(paste(sum(fail_converge),
-                  "regions fail to converge aftere newton"))
+      print(paste(
+        sum(fail_converge),
+        "regions fail to converge aftere newton"
+      ))
     }
   }
 

@@ -13,10 +13,8 @@ Imports:
     methods,
     stats,
     Matrix,
-    utils,
     parallel,
     tictoc,
-    Rfast,
     PICsnATAC
 License: MIT + file LICENSE
 Encoding: UTF-8

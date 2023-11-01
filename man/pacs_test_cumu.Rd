@@ -43,8 +43,9 @@ need to specify unless there are reasons to do so. Default = NULL}
 \item{n_cores}{number of cores for multi-core computation}
 }
 \value{
-A list of two elements, pacs_converged is a vector of length 2*n_peaks
-representing the convergence status of the peak in the null and full model
+A list of two elements, pacs_converged is a vector
+of length 2*n_peaks representing the convergence status
+of the peak in the null and full model
 and pacs_p_val is a vector of length n_peaks representing the p values for
 each peak.
 }

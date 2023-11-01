@@ -20,5 +20,5 @@ A matrix of cell types by cell matrix, with elements representing
 probability of being in that cell type
 }
 \description{
-Estimate cell type label for new data using all peaks as input
+We will identify relevant peaks
 }

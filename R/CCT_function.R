@@ -7,6 +7,8 @@
 #' page. Please also cite their initial publication
 #' if you used this part of codes. Thaks!
 #'
+#' @importFrom stats pcauchy
+#'
 #' @param pval_mat A matrix of p values where each row is a feature and
 #'  each column is a p value from one individual test, so that we want to
 #'  compute aggregated p values for each row
@@ -28,8 +30,10 @@ CCT_internal_horizontal <- function(pval_mat) {
 
 
 
-  weights <- matrix(1 / ncol(pval_mat), ncol = ncol(pval_mat),
-                    nrow = nrow(pval_mat))
+  weights <- matrix(1 / ncol(pval_mat),
+    ncol = ncol(pval_mat),
+    nrow = nrow(pval_mat)
+  )
 
   is.small <- rowSums(pval_mat < 1e-16) > 0
 
@@ -37,7 +41,8 @@ CCT_internal_horizontal <- function(pval_mat) {
     ## non-small values
     pval_n_small <- pval_mat[!is.small, ]
     weights_n_small <- weights[!is.small, ]
-    cct.stat_n_small <- rowSums(weights_n_small * tan((0.5 - pval_n_small) * pi))
+    cct.stat_n_small <- rowSums(weights_n_small *
+      tan((0.5 - pval_n_small) * pi))
     names(cct.stat_n_small) <- rownames(pval_n_small)
 
     ## small values
@@ -95,7 +100,8 @@ CCT_internal <- function(pvals) {
     cct.stat <- sum(weights * tan((0.5 - pvals) * pi))
   } else {
     cct.stat <- sum((weights[is.small] / pvals[is.small]) / pi)
-    cct.stat <- cct.stat + sum(weights[!is.small] * tan((0.5 - pvals[!is.small]) * pi))
+    cct.stat <- cct.stat + sum(weights[!is.small] *
+      tan((0.5 - pvals[!is.small]) * pi))
   }
 
   #### check if the test statistic is very large.
@@ -104,7 +110,6 @@ CCT_internal <- function(pvals) {
   } else {
     pval <- 1 - stats::pcauchy(cct.stat)
   }
+
   return(pval)
 }
-
-
