@@ -46,7 +46,8 @@ compare_models <- function(x_full, theta_estimated_full,
   ## get number of regions (peaks)
   n_regions <- dim(theta_estimated_full)[2]
   if (n_regions != dim(c_by_r)[2]) {
-    stop("please make sure the input matrix and the parameters match dimensions")
+    stop("please make sure the input matrix and
+         the parameters match dimensions")
   }
 
   ## df
@@ -59,8 +60,8 @@ compare_models <- function(x_full, theta_estimated_full,
   ###############
 
   ## vectorize -- calculate for all regions
-  x_times_theta <- x_full %*% theta_estimated_full ## n by r (number of features)
-  p_bg <- 1 - 1 / (exp(x_times_theta) + 1) ## n by r (number of features)
+  x_times_theta <- x_full %*% theta_estimated_full ## n by r (#features)
+  p_bg <- 1 - 1 / (exp(x_times_theta) + 1) ## n by r (#features)
 
   ## calculate loss without Firth prior
   log_pq <- log(q_vec) + log(p_bg) ## n by r (number of features)
@@ -76,16 +77,18 @@ compare_models <- function(x_full, theta_estimated_full,
   ###############
 
   ## vectorize -- calculate for all regions
-  x_times_theta_null <- x_null %*% theta_estimated_null ## n by r (number of features)
-  p_bg_null <- 1 - 1 / (exp(x_times_theta_null) + 1) ## n by r (number of features)
+  x_times_theta_null <- x_null %*% theta_estimated_null ## n by r (# features)
+  p_bg_null <- 1 - 1 / (exp(x_times_theta_null) + 1) ## n by r (#features)
 
   ## calculate loss without Firth prior
   log_pq_null <- log(q_vec) + log(p_bg_null) ## n by r (number of features)
   log_1_pq_null <- log(1 - p_bg_null * q_vec) ## n by r (number of features)
-  log_loss_null <- colSums(c_by_r * log_pq_null + (1 - c_by_r) * log_1_pq_null) ## vector, r
+  log_loss_null <- colSums(c_by_r * log_pq_null +
+    (1 - c_by_r) * log_1_pq_null) ## vector, r
 
   ## calculate W for GLM
-  wii_null <- (p_bg_null * (1 - p_bg_null) * (1 - p_bg_null) * q_vec) / (1 - p_bg_null * q_vec) ## n by r
+  wii_null <- (p_bg_null * (1 - p_bg_null) * (1 - p_bg_null) * q_vec) /
+    (1 - p_bg_null * q_vec) ## n by r
   wii_sqrt_null <- sqrt(wii_null) ## n by r
 
   ## for each column, do this
@@ -102,8 +105,8 @@ compare_models <- function(x_full, theta_estimated_full,
   )
   tictoc::toc()
 
-  log_loss_star_full <- unlist(log_loss_firth_full) + log_loss ## vector length r
-  log_loss_star_null <- unlist(log_loss_firth_null) + log_loss_null ## vector length r
+  log_loss_star_full <- unlist(log_loss_firth_full) + log_loss ## vector len r
+  log_loss_star_null <- unlist(log_loss_firth_null) + log_loss_null ## len r
 
   test_stat <- 2 * (log_loss_star_full - log_loss_star_null)
   LRT_p_value <- pchisq(test_stat, df = df_test, lower.tail = FALSE)
@@ -161,7 +164,6 @@ get_our_firth_p_value <- function(
 
 #' Internal evaluation use only -- loss function Without Firth
 #'
-#' @importFrom Rfast rowsums
 #' @param p_vec A vector of open probability
 #' @param q_vec A vector of capturing probability
 #' @param y_mat Read count matrix
@@ -174,20 +176,18 @@ loss_fun_simple_pq <- function(p_vec, q_vec, y_mat) {
   }
 
   p_q_mat <- outer(p_vec, q_vec, FUN = "*")
-  # print(quantile(p_q_mat))
   log_p <- log(p_vec)
   log_q <- log(q_vec)
   log_pq <- outer(log_p, log_q, FUN = "+") ## better numerical accuracy
   log_1_pq <- log(1 - p_q_mat)
 
-  return(Rfast::rowsums(y_mat * log_pq + (1 - y_mat) * log_1_pq))
+  return(rowSums(y_mat * log_pq + (1 - y_mat) * log_1_pq))
 }
 
 
 
 #' Internal evaluation use only -- PACS Without Firth
 #'
-#' @importFrom Rfast rowsums
 #' @importFrom methods is
 #' @param data_matrix_pos Count matrix in foreground group
 #' @param data_matrix_neg Count matrix in background group
@@ -205,14 +205,14 @@ our_method_no_firth <- function(
 
   both_group <- cbind(data_matrix_pos, data_matrix_neg)
   q_truth <- c(true_q_pos, true_q_neg)
-  p0_est <- Rfast::rowsums(both_group) / sum(q_truth)
+  p0_est <- rowSums(both_group) / sum(q_truth)
   p0_est[p0_est > 0.999] <- 0.999 ## make sure it does not exceed 1
   p0_est[p0_est < 0.0001] <- 0.0001 ## make sure it does not exceed 1
 
-  p0_est_A <- Rfast::rowsums(data_matrix_pos) / sum(true_q_pos)
+  p0_est_A <- rowSums(data_matrix_pos) / sum(true_q_pos)
   p0_est_A[p0_est_A > 0.999] <- 0.999 ## make sure it does not exceed 1
   p0_est_A[p0_est_A < 0.0001] <- 0.0001 ## make sure it does not exceed 1
-  p0_est_B <- Rfast::rowsums(data_matrix_neg) / sum(true_q_neg)
+  p0_est_B <- rowSums(data_matrix_neg) / sum(true_q_neg)
   p0_est_B[p0_est_B > 0.999] <- 0.999 ## make sure it does not exceed 1
   p0_est_B[p0_est_B < 0.0001] <- 0.0001 ## make sure it does not exceed 1
 
@@ -234,7 +234,7 @@ our_method_no_firth <- function(
   )
 
   LR_value2 <- 2 * (loss_full_model2 - loss_null_model2)
-  # LR_value2[LR_value2 < 0] = 0
+  LR_value2[LR_value2 < 0] <- 0
   sss <- pchisq(LR_value2, df = 1, lower.tail = FALSE)
   return(sss)
 }

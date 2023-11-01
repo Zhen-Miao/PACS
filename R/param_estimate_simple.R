@@ -49,7 +49,10 @@ add_pseudo_count <- function(
   new_capturing_rate <- rep(0.95, times = (2 * n_batch * n_group))
 
   ## create new matrix
-  new_r_by_c <- matrix(data = 0, nrow = nrow(r_by_c), ncol = (2 * n_batch * n_group))
+  new_r_by_c <- matrix(
+    data = 0, nrow = nrow(r_by_c),
+    ncol = (2 * n_batch * n_group)
+  )
   for (i in 1:(n_batch * n_group)) {
     new_r_by_c[, 2 * i] <- 1
   }
@@ -110,7 +113,7 @@ get_r_by_ct_mat <- function(
     min_p = 0.0001,
     adding_doublet = FALSE,
     doublet_model = "max",
-    adding_pseudo_count = T) {
+    adding_pseudo_count = TRUE) {
   ## check input peak by cell
   if (dim(r_by_c)[2] != length(group_labels)) {
     stop("n_cells in pbyc should equals to n_cells in labels")
@@ -171,19 +174,28 @@ get_r_by_ct_mat <- function(
 
         ## combine cell types
         if (doublet_model == "expected") {
-          doublet <- 1 - ((1 - pbyt[, cell_type_sample_i]) * (1 - pbyt[, cell_type_sample_j]))
-        } else if (doublet_model == "half") {
-          doublet <- 0.5 * (1 - ((1 - pbyt[, cell_type_sample_i]) * (1 - pbyt[, cell_type_sample_j])))
-        } else if (doublet_model == "max") {
-          doublet <- pmax(pbyt[, cell_type_sample_i], pbyt[, cell_type_sample_j])
-        } else if (doublet_model == "ave") {
-          doublet <- (0.5 * pbyt[, cell_type_sample_i]) + (0.5 * pbyt[, cell_type_sample_j])
+          doublet <- 1 - ((1 - pbyt[, cell_type_sample_i]) *
+            (1 - pbyt[, cell_type_sample_j]))
+        } else if (doublet_model == "half") { ## not recommended
+          doublet <- 0.5 * (1 - ((1 - pbyt[, cell_type_sample_i]) *
+            (1 - pbyt[, cell_type_sample_j])))
+        } else if (doublet_model == "max") { ## not recommended
+          doublet <- pmax(
+            pbyt[, cell_type_sample_i],
+            pbyt[, cell_type_sample_j]
+          )
+        } else if (doublet_model == "ave") { ### not recommended
+          doublet <- (0.5 * pbyt[, cell_type_sample_i]) +
+            (0.5 * pbyt[, cell_type_sample_j])
         }
 
         doublet[doublet > max_p] <- max_p
         doublet[doublet < min_p] <- min_p
         pbyt <- cbind(pbyt, doublet)
-        colnames(pbyt)[dim(pbyt)[2]] <- paste("doublet_", cell_type_sample_i, cell_type_sample_j, sep = "")
+        colnames(pbyt)[dim(pbyt)[2]] <- paste("doublet_", cell_type_sample_i,
+          cell_type_sample_j,
+          sep = ""
+        )
       }
     }
   }
@@ -197,7 +209,6 @@ get_r_by_ct_mat <- function(
 #' we did not use this function in the PACS workflow
 #'
 #' @import Matrix
-#' @importFrom Rfast colsums
 #' @param r_by_t region by type matrix
 #' @param in_r_by_c input region by cell matrix
 #' @param capturing_rate Capturing probability (rate)
@@ -212,7 +223,8 @@ estimate_label_w_capturing_rate <- function(
     capturing_rate,
     alpha = 1) {
   ## build prediction matrix
-  esti_m5 <- matrix(nrow = dim(in_r_by_c)[2], ncol = dim(r_by_t)[2]) ## row cell, column cell types
+  esti_m5 <- matrix(nrow = dim(in_r_by_c)[2], ncol = dim(r_by_t)[2])
+  ## row cell, column cell types
   rownames(esti_m5) <- colnames(in_r_by_c)
   colnames(esti_m5) <- colnames(r_by_t)
 
@@ -226,13 +238,16 @@ estimate_label_w_capturing_rate <- function(
     }
   }
 
-  if (as.numeric(dim(in_r_by_c)[1]) * as.numeric(dim(in_r_by_c)[2]) > (2^31 - 1)) {
+  if (as.numeric(dim(in_r_by_c)[1]) * as.numeric(dim(in_r_by_c)[2]) >
+    (2^31 - 1)) {
     ## need to split
-    split_by <- ceiling((as.numeric(dim(in_r_by_c)[1]) * as.numeric(dim(in_r_by_c)[2])) / (2^31 - 1))
+    split_by <- ceiling((as.numeric(dim(in_r_by_c)[1]) *
+      as.numeric(dim(in_r_by_c)[2])) / (2^31 - 1))
     dim2 <- ceiling(dim(in_r_by_c)[2] / split_by)
     for (i in c(1:split_by)) {
-      in_r_by_c_mat <- as.matrix(in_r_by_c[, ((i - 1) * dim2 + 1):(min(i * dim2, dim(in_r_by_c)[2]))])
-      # in_capturing_rate <- capturing_rate[((i - 1) * dim2 + 1):(min(i * dim2, dim(in_r_by_c)[2]))]
+      in_r_by_c_mat <- as.matrix(
+        in_r_by_c[, ((i - 1) * dim2 + 1):(min(i * dim2, dim(in_r_by_c)[2]))]
+      )
 
       ## predict cell types
       for (i_cell in seq_len(dim(in_r_by_c_mat)[2])) {
@@ -240,9 +255,9 @@ estimate_label_w_capturing_rate <- function(
         lg_pqbyt <- log(pqbyt)
         lg_pqbyt_q <- log1p(-1 * pqbyt)
         # unparallelized
-        esti_m5[i_cell + (i - 1) * dim2, ] <- Rfast::colsums(lg_pqbyt * xvec + alpha * lg_pqbyt_q * (1 - xvec))
+        esti_m5[i_cell + (i - 1) * dim2, ] <-
+          colSums(lg_pqbyt * xvec + alpha * lg_pqbyt_q * (1 - xvec))
       }
-      saveRDS(esti_m5, "esti_m5_intermediate_ave_high q_12.rds")
     }
   } else {
     in_r_by_c_mat <- as.matrix(in_r_by_c)
@@ -256,10 +271,7 @@ estimate_label_w_capturing_rate <- function(
       lg_pqbyt_q <- log1p(-1 * pqbyt)
       # unparallelized
       xvec <- in_r_by_c_mat[, i_cell]
-      esti_m5[i_cell, ] <- Rfast::colsums(lg_pqbyt * xvec + lg_pqbyt_q * (1 - xvec))
-
-      # esti_m5[i_cell,] = apply(lg_pqbyt, 2, function(x) sum(x[in_r_by_c_mat[,i_cell] > 0])) +
-      #   alpha*  apply(lg_pqbyt_q, 2, function(x) sum(x[in_r_by_c_mat[,i_cell] == 0]))
+      esti_m5[i_cell, ] <- colSums(lg_pqbyt * xvec + lg_pqbyt_q * (1 - xvec))
     }
     return(esti_m5)
   }

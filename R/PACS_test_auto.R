@@ -7,6 +7,7 @@
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
 #' @import Matrix
+#' @import PICsnATAC
 #'
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells
@@ -98,7 +99,6 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
   p_2 <- rs2 / rs ## proportion of counts >= 2
   p_2[is.na(p_2)] <- 0
-  # quantile(p_2, na.rm = T)
 
   n_p_2 <- sum(p_2 >= T_proportion_cutoff)
   n_p_b <- sum(p_2 < T_proportion_cutoff)
@@ -109,7 +109,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
   }
 
   rm(pic_matrix_2)
-  gc(verbose = F)
+  gc(verbose = FALSE)
 
   ## select features based on the proportion of 2
   f_sel <- names(p_2)[p_2 >= T_proportion_cutoff]
@@ -151,7 +151,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
   ## compute the binary part
   if (n_p_b >= 1) {
-    pic_matrix_b <- pic_matrixbin[f_b_sel, , drop = F]
+    pic_matrix_b <- pic_matrixbin[f_b_sel, , drop = FALSE]
 
     n_iters_b <- ceiling(n_p_b / n_peaks_per_round)
     p_logit <- rep(list(), length = n_iters_b)
@@ -187,13 +187,14 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       p_val_cumu <- unlist(p_cumu_list)
 
       ## convergence status
-      conv_cumu_list <- sapply(p_cumu, function(x)
-        matrix(x$pacs_converged, ncol = 2))
+      conv_cumu_list <- sapply(p_cumu, function(x) {
+        matrix(x$pacs_converged, ncol = 2)
+      })
       conv_cumu <- do.call(rbind, conv_cumu_list)
     } else {
       ## p values
       p_cumu_list <- sapply(p_cumu, function(x) x$pacs_p_val)
-      p_val_cumu <- p_cumu_list[, 1, drop = T]
+      p_val_cumu <- p_cumu_list[, 1, drop = TRUE]
 
       ## convergence status
       conv_cumu_list <- sapply(p_cumu, function(x) x$pacs_converged)

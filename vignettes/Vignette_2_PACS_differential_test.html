@@ -298,23 +298,17 @@ overflow-y: auto;
 border: 1px solid #ddd;
 border-radius: 4px;
 }
-.tabset-dropdown > .nav-tabs > li.active:before {
-content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+content: "\e259";
 font-family: 'Glyphicons Halflings';
 display: inline-block;
 padding: 10px;
 border-right: 1px solid #ddd;
 }
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-content: "";
-border: none;
-}
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-content: "";
+content: "\e258";
 font-family: 'Glyphicons Halflings';
-display: inline-block;
-padding: 10px;
-border-right: 1px solid #ddd;
+border: none;
 }
 .tabset-dropdown > .nav-tabs > li.active {
 display: block;
@@ -400,8 +394,8 @@ or other pipelines.</p>
 have largely variant capturing rate (sequencing depth), and here, we
 will compute the caputuring rate in each cell while separating the
 effect of cell type-specific open probability</p>
-<pre class="r"><code>ctypes = unique(cell_types)
-r_by_ct_out = get_r_by_ct_mat_pq(cell_type_set = ctypes,
+<pre class="r"><code>ctypes &lt;- unique(cell_types)
+r_by_ct_out &lt;- get_r_by_ct_mat_pq(cell_type_set = ctypes,
                                  r_by_c = ref_mat,
                                  cell_type_labels = cell_types,
                                  n_features_per_cell = dim(ref_mat)[1])</code></pre>
@@ -420,13 +414,13 @@ type</li>
 Assume in the metadata, we have two columns, <code>cell_type</code> and
 <code>batch</code>, then the formula for full model and null model can
 be specified as the below example:</p>
-<pre class="r"><code>   p_vals = pacs_test_sparse(
+<pre class="r"><code>p_vals &lt;- pacs_test_sparse(
      covariate_meta.data = meta.data,
      formula_full = ~ factor(cell_type) + factor(batch),
      formula_null = ~ factor(batch),
      pic_matrix = data_mat,
      cap_rates = r_by_ct_out$q_vec
-   )</code></pre>
+     )</code></pre>
 <p>Note, there are some additional optional parameters we can set for
 the function:</p>
 <ul>

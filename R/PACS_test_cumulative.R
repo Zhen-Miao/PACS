@@ -21,8 +21,9 @@
 #'   need to specify unless there are reasons to do so. Default = NULL
 #' @param n_cores number of cores for multi-core computation
 #'
-#' @return A list of two elements, pacs_converged is a vector of length 2*n_peaks
-#'   representing the convergence status of the peak in the null and full model
+#' @return A list of two elements, pacs_converged is a vector
+#'   of length 2*n_peaks representing the convergence status
+#'   of the peak in the null and full model
 #'   and pacs_p_val is a vector of length n_peaks representing the p values for
 #'   each peak.
 #' @export
@@ -72,7 +73,6 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
 
   ### number of parameters in both matrices
   n_para_full <- dim(X_full)[2]
-  # n_para_null <- dim(X_null)[2]
 
   ### initialize the estimated parameters
   if (is.null(par_initial_full)) {

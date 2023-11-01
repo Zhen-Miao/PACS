@@ -44,7 +44,6 @@ pacs_test_logit <- function(covariate_meta.data, formula_full,
 
   ### number of parameters in both matrices
   n_para_full <- dim(X_full)[2]
-  # n_para_null <- dim(X_null)[2]
 
   ### initialize the estimated parameters
   if (is.null(par_initial_full)) {

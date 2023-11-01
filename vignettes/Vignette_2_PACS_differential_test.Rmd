@@ -6,7 +6,7 @@ date: "2023-08-21"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = '/Users/Shared/Example_dataset1/')
+knitr::opts_knit$set(root.dir = "/Users/Shared/Example_dataset1/")
 ```
 
 ### Content
@@ -16,11 +16,11 @@ This Vignette contains an example to conduct Differentially Accessible Region (D
 ### Required libraries
 Please make sure the following libraries are installed and loaded for the analysis. 
 ```{r eval=FALSE}
-library('data.table')
-library('Matrix')
-library('PICsnATAC')
-library('PACS')
-library('Rfast')
+library("data.table")
+library("Matrix")
+library("PICsnATAC")
+library("PACS")
+library("Rfast")
 ```
 
 ### Input files
@@ -39,11 +39,13 @@ As described in the manuscript, in the snATAC-seq data, each cell may have large
 capturing rate (sequencing depth), and here, we will compute the caputuring rate in each cell
 while separating the effect of cell type-specific open probability
 ```{r eval=FALSE}
-ctypes = unique(cell_types)
-r_by_ct_out = get_r_by_ct_mat_pq(cell_type_set = ctypes,
-                                 r_by_c = ref_mat,
-                                 cell_type_labels = cell_types,
-                                 n_features_per_cell = dim(ref_mat)[1])
+ctypes <- unique(cell_types)
+r_by_ct_out <- get_r_by_ct_mat_pq(
+  cell_type_set = ctypes,
+  r_by_c = ref_mat,
+  cell_type_labels = cell_types,
+  n_features_per_cell = dim(ref_mat)[1]
+)
 ```
 
 The object `r_by_ct_out` is a list with two elements,
@@ -59,13 +61,13 @@ two columns,  `cell_type` and `batch`, then the formula for full model and null 
 as the below example:
 
 ```{r eval=FALSE}
-   p_vals = pacs_test_sparse(
-     covariate_meta.data = meta.data,
-     formula_full = ~ factor(cell_type) + factor(batch),
-     formula_null = ~ factor(batch),
-     pic_matrix = data_mat,
-     cap_rates = r_by_ct_out$q_vec
-   )
+p_vals <- pacs_test_sparse(
+  covariate_meta.data = meta.data,
+  formula_full = ~ factor(cell_type) + factor(batch),
+  formula_null = ~ factor(batch),
+  pic_matrix = data_mat,
+  cap_rates = r_by_ct_out$q_vec
+)
 ```
 
 Note, there are some additional optional parameters we can set for the function:
