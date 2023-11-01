@@ -1,6 +1,6 @@
 Package: PACS
 Title: Probabilistic model for Accessible Chromatin data in Single Cell
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Zhen", "Miao", , "zhenmiaonk@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3255-9517"))
