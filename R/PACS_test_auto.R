@@ -140,9 +140,9 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       )
       toc()
     }
+    rm(pic_dense)
   }
   ## we do not need the quantitative part of the matrix any more
-  rm(pic_dense)
   rm(pic_matrix)
   gc(verbose = FALSE)
 
@@ -160,7 +160,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
       pic_dense <- as.matrix(pic_matrixbin[peak_start:peak_end, ])
 
-      tic("pacs computing cumulative logit part")
+      tic("pacs computing logit part")
 
       p_logit[[jj]] <- pacs_test_logit(
         covariate_meta.data = covariate_meta.data,
@@ -173,10 +173,9 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       )
       toc()
     }
+    rm(pic_dense)
+    gc(verbose = FALSE)
   }
-
-  rm(pic_dense)
-  gc(verbose = FALSE)
 
   ## organize the p values as well as convergence status
   if (n_p_2 >= 1 && n_p_b >= 1) {
@@ -235,6 +234,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       conv_logit_list <-
         sapply(p_logit, function(x) matrix(x$pacs_converged, ncol = 2))
       conver_logit <- do.call(rbind, conv_logit_list)
+      rownames(conver_logit) <- names(p_val_logit)
       convergence <- conver_logit[p_names, ]
 
   } else if (n_p_b == 0) {
@@ -247,6 +247,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       conv_cumu_list <-
         sapply(p_cumu, function(x) matrix(x$pacs_converged, ncol = 2))
       conv_cumu <- do.call(rbind, conv_cumu_list)
+      rownames(conver_logit) <- names(p_val_logit)
       convergence <- conv_cumu[p_names, ]
   }
 
