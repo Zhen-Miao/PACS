@@ -10,6 +10,7 @@ irls_iter_nt_null(
   xdumm,
   theta_estimated,
   hold_zero,
+  tolerance = .Machine$double.eps^0.5,
   stop_criteria = 1e-05,
   q_vec
 )
@@ -22,6 +23,9 @@ irls_iter_nt_null(
 \item{theta_estimated}{Estimated coefficient values}
 
 \item{hold_zero}{Which element to hold zero in the null model}
+
+\item{tolerance}{Numeric tolerance for matrix
+to be considered not revertable, default = .Machine$double.eps^0.5}
 
 \item{stop_criteria}{Resolution to stop, default = 1e-6}
 

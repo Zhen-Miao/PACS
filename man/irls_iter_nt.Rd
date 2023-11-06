@@ -4,7 +4,14 @@
 \alias{irls_iter_nt}
 \title{Iteratively reweighted least squares function -- newton methods}
 \usage{
-irls_iter_nt(y_vec, xdumm, theta_estimated, stop_criteria = 1e-05, q_vec)
+irls_iter_nt(
+  y_vec,
+  xdumm,
+  theta_estimated,
+  tolerance = .Machine$double.eps^0.5,
+  stop_criteria = 1e-05,
+  q_vec
+)
 }
 \arguments{
 \item{y_vec}{Observed counts}
@@ -12,6 +19,9 @@ irls_iter_nt(y_vec, xdumm, theta_estimated, stop_criteria = 1e-05, q_vec)
 \item{xdumm}{Design matrix}
 
 \item{theta_estimated}{Estimated coefficient values}
+
+\item{tolerance}{Numeric tolerance for matrix
+to be considered not revertable, default = .Machine$double.eps^0.5}
 
 \item{stop_criteria}{Resolution to stop, default = 1e-6}
 
