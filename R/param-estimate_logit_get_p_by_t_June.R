@@ -144,6 +144,8 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
 #' @param stop_criteria Resolution to stop, default = 1e-6
+#' @param tolerance Numeric tolerance for matrix
+#'   to be considered not revertable, default = .Machine$double.eps^0.5
 #' @param q_vec Capturing probability vector
 #' @param y_vec Observed counts
 #'
@@ -151,10 +153,11 @@ compute_infor_mat_tilda <- function(xdumm, p_bg, q_vec, y_vec) {
 #' @export
 irls_iter <- function(
     y_vec, xdumm, theta_estimated,
+    tolerance = .Machine$double.eps^0.5,
     stop_criteria = 1e-6, q_vec) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1
+  conv_stat <- 1
   ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   while (indi >= stop_criteria && n_iter <= 15) {
     ## compute some values
@@ -164,24 +167,27 @@ irls_iter <- function(
     wii_sqrt_X <- compute_wii_sqrt_X(xdumm, p_bg, q_vec = q_vec)
     inf_mat <- crossprod(wii_sqrt_X)
 
-    if (determinant.matrix(inf_mat)$modulus[1] == 0) {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
-    }
-
     score_total <- loss_grad_pen(
       xdumm, p_bg,
       q_vec = q_vec, inf_mat, wii_sqrt_X
     ) +
       loss_gradient(xdumm, p_bg, q_vec, y_vec)
 
+    if (determinant.matrix(inf_mat)$modulus[1] < tolerance) {
+      conv_stat <- 2
+      break
+    }
+
     if (!anyNA(score_total)) {
       inf_mat_inv <- try(solve(inf_mat), silent = TRUE)
+      if (is.error(inf_mat_inv)) {
+        warning("Matrix inversion failed.")
+        conv_stat <- 2
+        break
+      }
     } else {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+      conv_stat <- 2
+      break
     }
 
     theta_update <- theta_estimated + inf_mat_inv %*% score_total
@@ -191,10 +197,10 @@ irls_iter <- function(
   }
 
   if (indi >= stop_criteria) {
-    conv.stat <- 3
+    conv_stat <- 3
   }
 
-  theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+  theta_n_conv <- c(as.vector(theta_estimated), conv_stat)
   return(theta_n_conv)
 }
 
@@ -205,6 +211,8 @@ irls_iter <- function(
 #' @param y_vec Observed counts
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
+#' @param tolerance Numeric tolerance for matrix
+#'   to be considered not revertable, default = .Machine$double.eps^0.5
 #' @param hold_zero Which element to hold zero in the null model
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
@@ -213,10 +221,11 @@ irls_iter <- function(
 #' @export
 irls_iter_null <- function(
     y_vec, xdumm, theta_estimated,
+    tolerance = .Machine$double.eps^0.5,
     hold_zero, stop_criteria = 1e-6, q_vec) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1
+  conv_stat <- 1
   ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   poi <- setdiff(c(seq_along(theta_estimated)), hold_zero)
   zero_augment <- rep(0, length(hold_zero))
@@ -228,10 +237,9 @@ irls_iter_null <- function(
     wii_sqrt_X <- compute_wii_sqrt_X(xdumm, p_bg, q_vec = q_vec)
     inf_mat <- crossprod(wii_sqrt_X)
 
-    if (determinant.matrix(inf_mat)$modulus[1] == 0) {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+    if (determinant.matrix(inf_mat)$modulus[1] < tolerance) {
+      conv_stat <- 2
+      break
     }
 
     score_total <- loss_grad_pen(
@@ -242,10 +250,14 @@ irls_iter_null <- function(
 
     if (!anyNA(score_total)) {
       inf_mat_inv <- try(solve(inf_mat[poi, poi]), silent = TRUE)
+      if (is.error(inf_mat_inv)) {
+        warning("Matrix inversion failed.")
+        conv_stat <- 2
+        break
+      }
     } else {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+      conv_stat <- 2
+      break
     }
 
     updated_offset <- c(inf_mat_inv %*% score_total[poi], zero_augment)
@@ -256,10 +268,10 @@ irls_iter_null <- function(
   }
 
   if (indi >= stop_criteria) {
-    conv.stat <- 3
+    conv_stat <- 3
   }
 
-  theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+  theta_n_conv <- c(as.vector(theta_estimated), conv_stat)
   return(theta_n_conv)
 }
 
@@ -268,6 +280,8 @@ irls_iter_null <- function(
 #'
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
+#' @param tolerance Numeric tolerance for matrix
+#'   to be considered not revertable, default = .Machine$double.eps^0.5
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #' @param y_vec Observed counts
@@ -276,10 +290,11 @@ irls_iter_null <- function(
 #' @export
 irls_iter_nt <- function(
     y_vec, xdumm, theta_estimated,
+    tolerance = .Machine$double.eps^0.5,
     stop_criteria = 1e-5, q_vec) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1
+  conv_stat <- 1
   ## 1 means converge, 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   loss_star <- vector(length = 15)
@@ -305,10 +320,9 @@ irls_iter_nt <- function(
     inf_mat_tilda <- 0.5 * inf_mat_tilda + 0.5 * inf_mat
     # inf_mat_tilda = inf_mat
 
-    if (determinant.matrix(inf_mat_tilda)$modulus[1] == 0) {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+    if (determinant.matrix(inf_mat_tilda)$modulus[1] < tolerance) {
+      conv_stat <- 2
+      break
     }
 
     score_total <- loss_grad_pen(
@@ -319,9 +333,14 @@ irls_iter_nt <- function(
 
     if (!anyNA(score_total)) {
       inf_mat_inv <- try(solve(inf_mat_tilda), silent = TRUE)
+      if(is.error(inf_mat_inv)) {
+        warning("Matrix inversion failed.")
+        conv_stat <- 2
+        break
+      }
     } else {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+      conv_stat <- 2
+      theta_n_conv <- c(as.vector(theta_estimated), conv_stat)
       return(theta_n_conv)
     }
 
@@ -330,8 +349,8 @@ irls_iter_nt <- function(
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
     if (n_iter >= 2 &&
-      !is.na(loss_star[n_iter]) &&
-      loss_star[n_iter] != -Inf) {
+        !is.na(loss_star[n_iter]) &&
+        loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
@@ -341,26 +360,23 @@ irls_iter_nt <- function(
         }
       } else {
         # print('loss not increasing')
-        conv.stat <- 4
-        theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-        return(theta_n_conv)
+        conv_stat <- 4
         break
       }
     } else if (!is.na(loss_star[n_iter]) && loss_star[n_iter] != -Inf) {
       theta_estimated <- theta_update
     } else {
-      conv.stat <- 4
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+      conv_stat <- 4
       break
     }
     n_iter <- n_iter + 1
   }
 
   if (n_iter > 15) {
-    conv.stat <- 3
+    conv_stat <- 3
   }
 
-  theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+  theta_n_conv <- c(as.vector(theta_estimated), conv_stat)
   return(theta_n_conv)
 }
 
@@ -372,6 +388,8 @@ irls_iter_nt <- function(
 #' @param xdumm Design matrix
 #' @param theta_estimated Estimated coefficient values
 #' @param hold_zero Which element to hold zero in the null model
+#' @param tolerance Numeric tolerance for matrix
+#'   to be considered not revertable, default = .Machine$double.eps^0.5
 #' @param stop_criteria Resolution to stop, default = 1e-6
 #' @param q_vec Capturing probability vector
 #'
@@ -379,10 +397,11 @@ irls_iter_nt <- function(
 #' @export
 irls_iter_nt_null <- function(
     y_vec, xdumm, theta_estimated, hold_zero,
+    tolerance = .Machine$double.eps^0.5,
     stop_criteria = 1e-5, q_vec) {
   indi <- 1
   n_iter <- 1
-  conv.stat <- 1 ## 1 means converge,
+  conv_stat <- 1 ## 1 means converge,
   ## 2 means matrix singular, 3 means reaches max iter
   # y_vec = as.vector(y_vec)
   poi <- setdiff(c(seq_along(theta_estimated)), hold_zero)
@@ -411,10 +430,9 @@ irls_iter_nt_null <- function(
     inf_mat_tilda <- 0.5 * inf_mat_tilda + 0.5 * inf_mat
     # inf_mat_tilda = inf_mat
 
-    if (determinant.matrix(inf_mat_tilda)$modulus[1] == 0) {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+    if (determinant.matrix(inf_mat_tilda)$modulus[1] < tolerance) {
+      conv_stat <- 2
+      break
     }
 
     score_total <- loss_grad_pen(
@@ -425,10 +443,14 @@ irls_iter_nt_null <- function(
 
     if (!anyNA(score_total)) {
       inf_mat_inv <- try(solve(inf_mat_tilda[poi, poi]), silent = TRUE)
+      if (is.error(inf_mat_inv)) {
+        warning("Matrix inversion failed.")
+        conv_stat <- 2
+        break
+      }
     } else {
-      conv.stat <- 2
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-      return(theta_n_conv)
+      conv_stat <- 2
+      break
     }
 
     updated_offset <- c(inf_mat_inv %*% score_total[poi], zero_augment)
@@ -438,8 +460,8 @@ irls_iter_nt_null <- function(
     # print(theta_update)
     indi <- sum((theta_update - theta_estimated)^2)
     if (n_iter >= 2 &&
-      !is.na(loss_star[n_iter]) &&
-      loss_star[n_iter] != -Inf) {
+        !is.na(loss_star[n_iter]) &&
+        loss_star[n_iter] != -Inf) {
       if (loss_star[n_iter] - loss_star[n_iter - 1] > 0) {
         theta_estimated <- theta_update
         if (loss_star[n_iter] - loss_star[n_iter - 1] < 1) {
@@ -449,26 +471,23 @@ irls_iter_nt_null <- function(
         }
       } else {
         # print('loss not increasing')
-        conv.stat <- 4
-        theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
-        return(theta_n_conv)
+        conv_stat <- 4
         break
       }
     } else if (!is.na(loss_star[n_iter]) && loss_star[n_iter] != -Inf) {
       theta_estimated <- theta_update
     } else {
-      conv.stat <- 4
-      theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+      conv_stat <- 4
       break
     }
     n_iter <- n_iter + 1
   }
 
   if (n_iter > 15) {
-    conv.stat <- 3
+    conv_stat <- 3
   }
 
-  theta_n_conv <- c(as.vector(theta_estimated), conv.stat)
+  theta_n_conv <- c(as.vector(theta_estimated), conv_stat)
   return(theta_n_conv)
 }
 
