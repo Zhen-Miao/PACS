@@ -48,12 +48,18 @@ pacs_test_logit <- function(covariate_meta.data, formula_full,
   ### initialize the estimated parameters
   if (is.null(par_initial_full)) {
     par_initial_full <- rep.int(0.05, n_para_full)
+  }else if (length(par_initial_full) != n_para_full) {
+    par_initial_full <- rep(par_initial_full[1], times = n_para_full)
   }
 
   if (is.null(par_initial_null)) {
     par_initial_null <- par_initial_full
-    par_initial_null[!(colnames(X_full) %in% colnames(X_null))] <- 0
+  }else if (length(par_initial_null) != n_para_full) {
+    par_initial_null <- rep(par_initial_null[1], times = n_para_full)
   }
+
+  ## make sure the null part is set to zero
+  par_initial_null[!(colnames(X_full) %in% colnames(X_null))] <- 0
 
   ### fit the null model
   null_para <- estimate_parameters_null(
