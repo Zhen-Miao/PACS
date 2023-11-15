@@ -1,0 +1,11 @@
+pandoc: 2.19.2
+pkgdown: 2.0.7
+pkgdown_sha: ~
+articles:
+  Vignette_1_PACS_cell_type_annotation: Vignette_1_PACS_cell_type_annotation.html
+  Vignette_2_PACS_differential_test: Vignette_2_PACS_differential_test.html
+last_built: 2023-11-15T21:58Z
+urls:
+  reference: https://zhen-miao.github.io/PACS/reference
+  article: https://zhen-miao.github.io/PACS/articles
+
