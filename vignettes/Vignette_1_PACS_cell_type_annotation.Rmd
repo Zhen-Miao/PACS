@@ -9,13 +9,13 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/Users/Shared/Example_dataset1/")
 ```
 
-### Content
+# Content
 
 This Vignette contains an example to conduct cell type annotation with PACS. To conduct cell type 
 annotation, we need to have a reference dataset with cell type annotated, and a new dataset where
 we want to infer the cell type labels for each cell. 
 
-### Required libraries
+# Required libraries
 Please make sure the following libraries are installed and loaded for the analysis. 
 ```{r eval=FALSE}
 library("data.table")
@@ -25,7 +25,7 @@ library("PACS")
 library("Rfast")
 ```
 
-### Input files
+# Input files
 
 The PACS cell type annotation framework requires the following input files:
 
@@ -37,7 +37,7 @@ Note, the two data matrices should have the same set of features (peaks), and pl
 [`PIC_snATAC` package](https://github.com/Zhen-Miao/PIC-snATAC) for obtaining data matrix. 
 Clustering and annotation can be conducted with Seurat, ArchR, snapATAC, or other pipelines. 
 
-### Cell-specific capturing rate estimation
+# Cell-specific capturing rate estimation
 As described in the manuscript, in the snATAC-seq data, each cell may have largely variant 
 capturing rate (sequencing depth), and here, we will compute the caputuring rate in each cell
 while separating the effect of cell type-specific open probability
@@ -58,7 +58,7 @@ The object `r_by_ct_out` is a list with two elements,
 
 The first element will be the input for annotating cell type labels of new dataset
 
-### Identify informative features 
+# Identify informative features 
 We only choose a subset of features that are informative for distinguish different cell types. 
 A rule of thumb is to choose features based on their standard deviation across cell types.
 
@@ -67,7 +67,7 @@ p_sd <- sqrt(Rfast::rowVars(r_by_ct_out$p_by_t))
 pk_sel <- p_sd > quantile(p_sd, 0.5) ## top 50% highly variable features
 ```
 
-### Cell type annotation
+# Cell type annotation
 
 ```{r eval=FALSE}
 ## get the likelihood for each cell type
@@ -85,7 +85,7 @@ esti_ctype_labels <- ctypes[esti_ctype_fir]
 ```
   
 
-### Reference
+# Reference
 If you used PACS in your analysis, please cite our manuscript:
 
 Miao, Z., Wang, J., Park, K., Kuang, D., & Kim, J. (2023). Model-based compound hypothesis testing for snATAC-seq data with PACS. _bioRxiv_, 2023-07.
