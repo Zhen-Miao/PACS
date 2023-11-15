@@ -14,8 +14,9 @@ Imports:
     stats,
     Matrix,
     parallel,
-    tictoc,
-    PICsnATAC
+    tictoc
+Remotes:
+    Zhen-Miao/PICsnATAC
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
