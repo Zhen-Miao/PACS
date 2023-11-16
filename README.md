@@ -42,22 +42,46 @@ This is a basic example which shows you how to run PACS common workflow:
 ``` r
 library(PACS)
 
-p_vals = pacs_test_sparse(
-     covariate_meta.data = meta.data,
-     formula_full = ~ factor(cell_type) + factor(batch),
-     formula_null = ~ factor(batch),
-     pic_matrix = data_mat,
-     cap_rates = capturing_probability
-   )
+p_vals <- pacs_test_sparse(
+  covariate_meta.data = meta.data,
+  formula_full = ~ factor(cell_type) + factor(batch),
+  formula_null = ~ factor(batch),
+  pic_matrix = data_mat,
+  cap_rates = capturing_probability
+)
 ```
 
 ## Vignette and Interactive Notebooks
 
-Vignette 1: [Cell type annotation with
-PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
+An interactive tutorial website with vignettes can be found at
 
-Vignette 2: [Differentially Accessible Region (DAR) Identification with
-PACS](https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html)
+<https://zhen-miao.github.io/PACS/>
+
+Although not recommended, you can also run the analysis using Goolge
+Colab, with one example shown below:
 
 Notebook 1: [Type 1 error and power evaluation in real data
 .](https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Notebook_1_Test_For_Sens_Spec_real_kidney_data.ipynb)
+
+## Citation:
+
+Miao, Z., Wang, J., Park, K. Kuang, D. and Kim, J. **Model-based
+compound hypothesis testing for snATAC-seq data with PACS.** *bioRxiv*
+(2023). <https://www.biorxiv.org/content/10.1101/2023.07.30.551108v1>
+
+## snATAC-seq toolkits
+
+PACS is one of the snATAC-seq toolkits developed by the Kim lab. Other
+toolkits include:
+
+- [**PICsnATAC**](https://github.com/Zhen-Miao/PICsnATAC)
+
+Miao, Z and Kim, J. **Uniform quantification of single-nucleus ATAC-seq
+data with Paired- Insertion Counting (PIC) and a model-based insertion
+rate estimator.** Nature Methods 2023 (In press)
+
+## Contact
+
+For any questions regarding the package, please contact Zhen Miao
+(<zhenmiao@pennmedicine.upenn.edu>) or Junhyong Kim
+(<junhyong@sas.upenn.edu>).

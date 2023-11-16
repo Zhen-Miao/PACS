@@ -9,6 +9,8 @@ Description: PACS is a toolkit for snATAC-seq data analysis. The key functionali
   Statistical test for complex data design;
   Supervised cell type annotation (with a reference dataset);
   Batch effect correction enabled by statistical test framework.
+Depends: 
+    R (>= 3.4.0)
 Imports: 
     methods,
     stats,
