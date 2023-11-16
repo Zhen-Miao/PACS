@@ -98,20 +98,40 @@ Illustration of PACS framework.
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://zhen-miao.github.io/PACS/">PACS</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">p_vals</span> <span class="op">=</span> <span class="fu"><a href="reference/pacs_test_sparse.html">pacs_test_sparse</a></span><span class="op">(</span></span>
-<span>     covariate_meta.data <span class="op">=</span> <span class="va">meta.data</span>,</span>
-<span>     formula_full <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">cell_type</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">batch</span><span class="op">)</span>,</span>
-<span>     formula_null <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">batch</span><span class="op">)</span>,</span>
-<span>     pic_matrix <span class="op">=</span> <span class="va">data_mat</span>,</span>
-<span>     cap_rates <span class="op">=</span> <span class="va">capturing_probability</span></span>
-<span>   <span class="op">)</span></span></code></pre></div>
+<span><span class="va">p_vals</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pacs_test_sparse.html">pacs_test_sparse</a></span><span class="op">(</span></span>
+<span>  covariate_meta.data <span class="op">=</span> <span class="va">meta.data</span>,</span>
+<span>  formula_full <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">cell_type</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">batch</span><span class="op">)</span>,</span>
+<span>  formula_null <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">batch</span><span class="op">)</span>,</span>
+<span>  pic_matrix <span class="op">=</span> <span class="va">data_mat</span>,</span>
+<span>  cap_rates <span class="op">=</span> <span class="va">capturing_probability</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="vignette-and-interactive-notebooks">Vignette and Interactive Notebooks<a class="anchor" aria-label="anchor" href="#vignette-and-interactive-notebooks"></a>
 </h2>
-<p>Vignette 1: <a href="https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html" class="external-link">Cell type annotation with PACS</a></p>
-<p>Vignette 2: <a href="https://htmlpreview.github.io/?https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Vignette_1_PACS_cell_type_annotation.html" class="external-link">Differentially Accessible Region (DAR) Identification with PACS</a></p>
+<p>An interactive tutorial website with vignettes can be found at</p>
+<p><a href="https://zhen-miao.github.io/PACS/" class="uri">https://zhen-miao.github.io/PACS/</a></p>
+<p>Although not recommended, you can also run the analysis using Goolge Colab, with one example shown below:</p>
 <p>Notebook 1: <a href="https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Notebook_1_Test_For_Sens_Spec_real_kidney_data.ipynb" class="external-link">Type 1 error and power evaluation in real data .</a></p>
+</div>
+<div class="section level2">
+<h2 id="citation">Citation:<a class="anchor" aria-label="anchor" href="#citation"></a>
+</h2>
+<p>Miao, Z., Wang, J., Park, K. Kuang, D. and Kim, J. <strong>Model-based compound hypothesis testing for snATAC-seq data with PACS.</strong> <em>bioRxiv</em> (2023). <a href="https://www.biorxiv.org/content/10.1101/2023.07.30.551108v1" class="external-link uri">https://www.biorxiv.org/content/10.1101/2023.07.30.551108v1</a></p>
+</div>
+<div class="section level2">
+<h2 id="snatac-seq-toolkits">snATAC-seq toolkits<a class="anchor" aria-label="anchor" href="#snatac-seq-toolkits"></a>
+</h2>
+<p>PACS is one of the snATAC-seq toolkits developed by the Kim lab. Other toolkits include:</p>
+<ul>
+<li><a href="https://github.com/Zhen-Miao/PICsnATAC" class="external-link"><strong>PICsnATAC</strong></a></li>
+</ul>
+<p>Miao, Z and Kim, J. <strong>Uniform quantification of single-nucleus ATAC-seq data with Paired- Insertion Counting (PIC) and a model-based insertion rate estimator.</strong> Nature Methods 2023 (In press)</p>
+</div>
+<div class="section level2">
+<h2 id="contact">Contact<a class="anchor" aria-label="anchor" href="#contact"></a>
+</h2>
+<p>For any questions regarding the package, please contact Zhen Miao (<a href="mailto:zhenmiao@pennmedicine.upenn.edu" class="email">zhenmiao@pennmedicine.upenn.edu</a>) or Junhyong Kim (<a href="mailto:junhyong@sas.upenn.edu" class="email">junhyong@sas.upenn.edu</a>).</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
