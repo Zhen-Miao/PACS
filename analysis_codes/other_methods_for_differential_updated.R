@@ -72,6 +72,27 @@ seurat_method3_subsample <- function(data_matrix, x_null, group.info){
   return(p_val)
 }
 
+#############################################################
+## this function is only for evaluation of the Seurat method
+## for the test of its ability to detect significant effect
+## of other covariates
+#############################################################
+seurat_method3_other_factors <- function(data_matrix, x_null, group_info, batch_info){
+
+  ## data_matrix should be feature by cell matrix
+  n_features <- dim(data_matrix)[1]
+  p_val <- vector(length = n_features)
+  for(i in 1:n_features){
+    X_null_AC = cbind(x_null,data_matrix[i, ])
+    X_1 = cbind(X_null_AC, batch_info)
+
+    model1 <- glm_logistic(x = X_1, y = group_info)
+    model2 <- glm_logistic(x = X_null_AC,y = group_info)
+    p_val[i] <- pchisq(model2$devi - model1$devi, df = 1,lower.tail = F)
+  }
+  return(p_val)
+}
+
 
 # ## the same thing, but accelerated
 # seurat_method2_subsample_change_response <- function(data_matrix_pos, data_matrix_neg, peak_region_fragments){

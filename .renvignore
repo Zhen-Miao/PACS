@@ -1,0 +1,7 @@
+*.Rmd
+data/
+analysis_codes/
+docs/
+man/
+tests/
+vignettes/
