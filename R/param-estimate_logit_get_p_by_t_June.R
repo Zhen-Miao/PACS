@@ -559,33 +559,38 @@ estimate_parameters <- function(
 
   tictoc::toc()
 
-  n_divide <- ceiling(n_features / 4)
-  o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
-  )
-  o3 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
-  )
-  o4 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide * 3 + 1):n_features]
-  )
+  if(n_features > 1000){
+    n_divide <- floor(n_features / 4)
+    o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
+    o2 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
+    )
+    o3 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
+    )
+    o4 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide * 3 + 1):n_features]
+    )
 
-  theta_summaries <- cbind(o1, o2, o3, o4)
+    theta_summaries <- cbind(o1, o2, o3, o4)
+  }else{
+    theta_summaries <- do.call(cbind, theta_estimated_one_list)
+  }
+
+
 
   ## for those fail to converge, check newton method
   fail_converge <- theta_summaries[dim(theta_summaries)[1], ] != 1
   print(paste(sum(fail_converge), "regions fail to converge, try newton"))
   print(head(which(fail_converge)))
 
-  fc_regions <- names(fail_converge[fail_converge])
-
   if (sum(fail_converge) == 0) {
     return(theta_summaries)
   } else {
+    fc_regions <- names(which(fail_converge))
     r_by_c <- r_by_c[fc_regions]
 
     par_initial <- -1 * par_initial
@@ -658,33 +663,37 @@ estimate_parameters_null <- function(
   )
   tictoc::toc()
 
-  n_divide <- ceiling(n_features / 4)
-  o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
-  o2 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
-  )
-  o3 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
-  )
-  o4 <- do.call(
-    cbind,
-    theta_estimated_one_list[(n_divide * 3 + 1):n_features]
-  )
+  if(n_features > 1000){
+    n_divide <- floor(n_features / 4)
+    o1 <- do.call(cbind, theta_estimated_one_list[1:n_divide])
+    o2 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide + 1):(n_divide * 2)]
+    )
+    o3 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide * 2 + 1):(n_divide * 3)]
+    )
+    o4 <- do.call(
+      cbind,
+      theta_estimated_one_list[(n_divide * 3 + 1):n_features]
+    )
+    theta_summaries <- cbind(o1, o2, o3, o4)
+  }else{
+    theta_summaries <- do.call(cbind,theta_estimated_one_list )
+  }
 
-  theta_summaries <- cbind(o1, o2, o3, o4)
+
 
   ## for those fail to converge, check newton method
   fail_converge <- theta_summaries[dim(theta_summaries)[1], ] != 1
   print(paste(sum(fail_converge), "regions fail to converge, try newton"))
   print(head(which(fail_converge)))
 
-  fc_regions <- names(fail_converge[fail_converge])
-
   if (sum(fail_converge) == 0) {
     return(theta_summaries)
   } else {
+    fc_regions <- names(which(fail_converge))
     r_by_c <- r_by_c[fc_regions]
 
     par_initial <- -1 * par_initial

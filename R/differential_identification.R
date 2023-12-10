@@ -45,6 +45,7 @@ compare_models <- function(x_full, theta_estimated_full,
 
   ## get number of regions (peaks)
   n_regions <- dim(theta_estimated_full)[2]
+
   if (n_regions != dim(c_by_r)[2]) {
     stop("please make sure the input matrix and
          the parameters match dimensions")
