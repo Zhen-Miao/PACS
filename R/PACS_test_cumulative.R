@@ -121,8 +121,8 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
     null_para[dim(null_para)[1], ],
     full_para[dim(full_para)[1], ]
   ) ## convergence vector
-  null_para <- null_para[1:(dim(null_para)[1] - 1), ]
-  full_para <- full_para[1:(dim(full_para)[1] - 1), ]
+  null_para <- null_para[1:(dim(null_para)[1] - 1),, drop = FALSE  ]
+  full_para <- full_para[1:(dim(full_para)[1] - 1),, drop = FALSE  ]
 
   ### p value
   pacs_p_val <- compare_models(
