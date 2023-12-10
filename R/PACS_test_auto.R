@@ -158,7 +158,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       peak_start <- (jj - 1) * n_peaks_per_round + 1
       peak_end <- min(n_p_b, jj * n_peaks_per_round)
 
-      pic_dense <- as.matrix(pic_matrixbin[peak_start:peak_end, ])
+      pic_dense <- as.matrix(pic_matrixbin[peak_start:peak_end, ,drop = FALSE ])
 
       tic("pacs computing logit part")
 
