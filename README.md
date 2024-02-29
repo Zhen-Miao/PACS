@@ -35,6 +35,10 @@ devtools::install_github("Zhen-Miao/PICsnATAC") ## dependent package
 devtools::install_github("Zhen-Miao/PACS")
 ```
 
+This installation step should take `< 5 min` on a standard desktop
+machine. R version `> 4.0.0` is recommended (older R version has not
+been tested).
+
 ## Example
 
 This is a basic example which shows you how to run PACS common workflow:
@@ -78,7 +82,7 @@ toolkits include:
 
 Miao, Z and Kim, J. **Uniform quantification of single-nucleus ATAC-seq
 data with Paired- Insertion Counting (PIC) and a model-based insertion
-rate estimator.** Nature Methods 2023 (In press)
+rate estimator.** Nature Methods 2024
 
 ## Contact
 
