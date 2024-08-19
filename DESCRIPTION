@@ -16,6 +16,8 @@ Imports:
     parallel,
     tictoc,
     PICsnATAC
+Suggests:
+    Seurat
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
