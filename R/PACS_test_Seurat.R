@@ -86,7 +86,7 @@ ValidateCellGroups_Seurat <- function(
 #' @noRd
 #' @method FindMarkersPACS default
 #'
-.FindMarkersPACS_internal <- function(
+.FindMarkersPACS_default <- function(
     object,
     slot = "data",
     cells.1 = NULL,
@@ -142,20 +142,19 @@ ValidateCellGroups_Seurat <- function(
   }
 
   # feature selection (based on logFC)
-  if (slot != "scale.data") {
-    total.diff <- fc.results[, 1] #first column is logFC
-    names(total.diff) <- rownames(fc.results)
-    features.diff <- if (only.pos) {
-      names(x = which(x = total.diff >= logfc.threshold))
-    } else {
-      names(x = which(x = abs(x = total.diff) >= logfc.threshold))
-    }
-    features <- intersect(x = features, y = features.diff)
-    if (length(x = features) == 0) {
-      warning("No features pass logfc.threshold threshold; returning empty data.frame")
-      return(fc.results[features, ])
-    }
+  total.diff <- fc.results[, 1] #first column is logFC
+  names(total.diff) <- rownames(fc.results)
+  features.diff <- if (only.pos) {
+    names(x = which(x = total.diff >= logfc.threshold))
+  } else {
+    names(x = which(x = abs(x = total.diff) >= logfc.threshold))
   }
+  features <- intersect(x = features, y = features.diff)
+  if (length(x = features) == 0) {
+    warning("No features pass logfc.threshold threshold; returning empty data.frame")
+    return(fc.results[features, ])
+  }
+
 
   # subsample cell groups if they are too large
   if (max.cells.per.ident < Inf) {
@@ -170,23 +169,9 @@ ValidateCellGroups_Seurat <- function(
       latent.vars <- latent.vars[c(cells.1, cells.2), , drop = FALSE]
     }
   }
-  if (inherits(x = object, what = "IterableMatrix")){
-    if(test.use != "wilcox"){
-      stop("Differential expression with BPCells currently only supports the 'wilcox' method.",
-           " Please rerun with test.use = 'wilcox'")
-    }
-    data.use <- object[features, c(cells.1, cells.2), drop = FALSE]
-    groups <- c(rep("foreground", length(cells.1)), rep("background", length(cells.2)))
-    de.results <- suppressMessages(
-      BPCells::marker_features(data.use, group = groups, method = "wilcoxon")
-    )
-    de.results <- subset(de.results, de.results$foreground == "foreground")
-    de.results <- data.frame(feature = de.results$feature,
-                             p_val = de.results$p_val_raw)
-    rownames(de.results) <- de.results$feature
-    de.results$feature <- NULL
-  } else {
-    de.results <- PerformDE(
+
+  ## run differential test
+    de.results <- PerformDEPACS(
       object = object,
       cells.1 = cells.1,
       cells.2 = cells.2,
@@ -198,24 +183,30 @@ ValidateCellGroups_Seurat <- function(
       densify = densify,
       ...
     )
-  }
+
   de.results <- cbind(de.results, fc.results[rownames(x = de.results), , drop = FALSE])
   if (only.pos) {
     de.results <- de.results[de.results[, 2] > 0, , drop = FALSE]
   }
-  if (test.use %in% DEmethods_nocorrect()) {
-    de.results <- de.results[order(-de.results$power, -de.results[, 1]), ]
-  } else {
-    de.results <- de.results[order(de.results$p_val, -abs(de.results$pct.1-de.results$pct.2)), ]
-    de.results$p_val_adj = p.adjust(
-      p = de.results$p_val,
-      method = "bonferroni",
-      n = nrow(x = object)
-    )
-  }
+
+  de.results <- de.results[order(de.results$p_val, -abs(de.results$pct.1-de.results$pct.2)), ]
+  de.results$p_val_adj = p.adjust(
+    p = de.results$p_val,
+    method = "bonferroni",
+    n = nrow(x = object)
+  )
+
   return(de.results)
 }
 
+#' Differential test with PACS on Seurat object
+#' @description
+#' Run differential test using the similar style as in Seurat
+#' `Seurat::FindMarkers()` function.
+#' Note 1: This function is modified from Seurat package v5.1.0
+#' Note 2: Seurat must be installed to use this function.
+#' @param slot Slot to pull data from; note that for PACS,
+#'  it should be set to "counts"
 #' @param fc.slot Slot used to calculate fold-change - will also affect the
 #' default for \code{mean.fxn}, see below for more details.
 #' @param pseudocount.use Pseudocount to add to averaged expression values when
@@ -237,18 +228,18 @@ ValidateCellGroups_Seurat <- function(
 #' slot "avg_diff".
 #' @param base The base with respect to which logarithms are computed.
 #'
-#' @rdname FindMarkers
+#' @rdname FindMarkersPACS
 #' @concept differential_expression
 #' @export
-#' @method FindMarkers Assay
+#' @method FindMarkersPACS Assay
 #'
-FindMarkersPACS <- function(
+.FindMarkersPACS_assay <- function(
     object,
-    slot = "data",
+    slot = "counts",
     cells.1 = NULL,
     cells.2 = NULL,
     features = NULL,
-    fc.slot = "data",
+    fc.slot = "counts",
     pseudocount.use = 1,
     norm.method = NULL,
     mean.fxn = NULL,
@@ -257,10 +248,17 @@ FindMarkersPACS <- function(
     ...
 ) {
 
+  ## for scATAC-seq data, we should use count slot
+  data.slot <- "counts"
+
   if (length(x = Layers(object = object, search = slot)) > 1) {
     stop(slot, " layers are not joined. Please run JoinLayers")
   }
+
+  ## obtain the data matrix
   data.use <-  Seurat::GetAssayData(object = object, slot = data.slot)
+
+  ## calculate FC
   fc.results <- Seurat::FoldChange(
     object = object,
     slot = fc.slot,
@@ -273,7 +271,9 @@ FindMarkersPACS <- function(
     base = base,
     norm.method = norm.method
   )
-  de.results <- .FindMarkersPACS_internal(
+
+  ## differential test
+  de.results <- .FindMarkersPACS_default(
     object = data.use,
     cells.1 = cells.1,
     cells.2 = cells.2,
@@ -286,48 +286,143 @@ FindMarkersPACS <- function(
 }
 
 
-
-pacs_test_seurat <- function(object, cell_types_of_interest,
-                             by_identity = TRUE,
-                             meta_to_keep, formula_full,
-                             formula_null, pic_matrix,
-                             n_peaks_per_round = NULL,
-                             T_proportion_cutoff = 0.2,
-                             cap_rates, par_initial_null = NULL,
-                             par_initial_full = NULL, n_cores = 1,
-                             verbose = TRUE) {
-
-  ## need Seurat package installed
-  require("Seurat")
-
-  ## check the object
-  if(!is(object, 'Seurat')){
-    stop("The input object must be a Seurat object!")
+#' @param ident.1 Identity class to define markers for; pass an object of class
+#' \code{phylo} or 'clustertree' to find markers for a node in a cluster tree;
+#' passing 'clustertree' requires \code{\link{BuildClusterTree}} to have been run
+#' @param ident.2 A second identity class for comparison; if \code{NULL},
+#' use all other cells for comparison; if an object of class \code{phylo} or
+#' 'clustertree' is passed to \code{ident.1}, must pass a node to find markers for
+#' @param group.by Regroup cells into a different identity class prior to
+#' performing differential expression (see example)
+#' @param subset.ident Subset a particular identity class prior to regrouping.
+#' Only relevant if group.by is set (see example)
+#' @param assay Assay to use in differential expression testing
+#' @param reduction Reduction to use in differential expression testing - will
+#' test for DE on cell embeddings
+#'
+#' @rdname FindMarkersPACS
+#' @concept differential_expression
+#' @export
+#' @method FindMarkersPACS Seurat
+#'
+FindMarkersPACS <- function(
+    object,
+    ident.1 = NULL,
+    ident.2 = NULL,
+    latent.vars = NULL,
+    group.by = NULL,
+    subset.ident = NULL,
+    assay = NULL,
+    reduction = NULL,
+    ...
+) {
+  if (!is.null(x = group.by)) {
+    if (!is.null(x = subset.ident)) {
+      object <- subset(x = object, idents = subset.ident)
+    }
+    Idents(object = object) <- group.by
+  }
+  if (!is.null(x = assay) && !is.null(x = reduction)) {
+    stop("Please only specify either assay or reduction.")
+  }
+  if (length(x = ident.1) == 0) {
+    stop("At least 1 ident must be specified in `ident.1`")
   }
 
-  ## check formula
-  obmeta = object_sub@meta.data
-  vars_in_formula_full <- all.vars(formula_full)
-  vars_in_formula_null <- all.vars(formula_null)
-  if(!all(vars_in_formula_full %in% colnames(obmeta)) |
-     !all(vars_in_formula_null %in% colnames(obmeta))){
-    stop(paste("Not all variables in formula are available in meta.data slot,",
-               "Please make sure to include all variables in the meta.data",
-               "slot. "))
+  # select which data to use
+  if (is.null(x = reduction)) {
+    assay <- assay %||% DefaultAssay(object = object)
+    data.use <- object[[assay]]
+    cellnames.use <-  colnames(x = data.use)
+  } else {
+    data.use <- object[[reduction]]
+    cellnames.use <- rownames(x = data.use)
   }
 
+  cells <- IdentsToCells(
+    object = object,
+    ident.1 = ident.1,
+    ident.2 = ident.2,
+    cellnames.use = cellnames.use
+  )
+  cells <- sapply(
+    X = cells,
+    FUN = intersect,
+    y = cellnames.use,
+    simplify = FALSE,
+    USE.NAMES = TRUE
+  )
+  if (!all(vapply(X = cells, FUN = length, FUN.VALUE = integer(length = 1L)))) {
+    abort(
+      message = "Cells in one or both identity groups are not present in the data requested"
+    )
+  }
 
-  object_sub <- subset(object, idents = cell_types_of_interest)
+  # fetch latent.vars
+  if (!is.null(x = latent.vars)) {
+    latent.vars <- FetchData(
+      object = object,
+      vars = latent.vars,
+      cells = c(cells$cells.1, cells$cells.2)
+    )
+  }
 
+  # check normalization method
+  norm.command <- paste0("NormalizeData.", assay)
+  norm.method <- if (norm.command %in% Command(object = object) && is.null(x = reduction)) {
+    Command(
+      object = object,
+      command = norm.command,
+      value = "normalization.method"
+    )
+  } else if (length(x = intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"), y = Command(object = object)))) {
+    command <- intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"), y = Command(object = object))[1]
+    Command(
+      object = object,
+      command = command,
+      value = "normalization.method"
+    )
+  } else {
+    NULL
+  }
 
+  de.results <- .FindMarkersPACS_assay(
+    object = data.use,
+    latent.vars = latent.vars,
+    cells.1 = cells$cells.1,
+    cells.2 = cells$cells.2,
+    norm.method = norm.method,
+    ...
+  )
 
-  ## convert everthing into a character -- drop all
-  # pbmeta <- droplevels(pbmeta)
-  pbmeta[] <- lapply(pbmeta, function(x) if(is.factor(x)) as.character(x) else x)
-
-
-
-
-
-  return(object)
+  return(de.results)
 }
+
+
+PerformDEPACS <- function(
+    object,
+    cells.1,
+    cells.2,
+    features,
+    verbose,
+    min.cells.feature,
+    latent.vars,
+    densify,
+    ...
+) {
+
+  data.use <- object[features, c(cells.1, cells.2), drop = FALSE]
+  if (densify){
+    data.use <- as.matrix(x = data.use)
+  }
+  de.results <-
+    LRDETest(
+      data.use = data.use,
+      cells.1 = cells.1,
+      cells.2 = cells.2,
+      latent.vars = latent.vars,
+      verbose = verbose
+    )
+  return(de.results)
+}
+
