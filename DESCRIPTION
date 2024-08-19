@@ -17,8 +17,10 @@ Imports:
     Matrix,
     parallel,
     tictoc,
-    PICsnATAC
-Remotes: Zhen-Miao/PICsnATAC
+Remotes:
+    Zhen-Miao/PICsnATAC
+Suggests:
+    Seurat
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
