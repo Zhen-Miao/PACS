@@ -7,7 +7,6 @@
 #' @importFrom tictoc toc
 #' @importFrom parallel mclapply
 #' @import Matrix
-#' @import PICsnATAC
 #'
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells
