@@ -10,7 +10,7 @@ if (exists("%||%", envir = baseenv())) {
 }
 
 # FindMarkers helper function for cell grouping error checking
-ValidateCellGroups_Seurat <- function(
+.ValidateCellGroups_Seurat <- function(
     object,
     cells.1,
     cells.2,
@@ -42,8 +42,6 @@ ValidateCellGroups_Seurat <- function(
 
 
 
-
-
 #' Differential test with PACS on Seurat object
 #' @description
 #' This function performs differential testing on a Seurat object.
@@ -51,8 +49,7 @@ ValidateCellGroups_Seurat <- function(
 #' @param cells.1 Vector of cell names belonging to group 1
 #' @param cells.2 Vector of cell names belonging to group 2
 #' @param features Genes to test. Default is to use all genes
-#' @param slot Slot to pull data from; note that if \code{test.use} is
-#' "negbinom", "poisson", or "DESeq2", \code{slot} will be set to "counts"
+#' @param slot Slot to pull data from
 #' @param logfc.threshold Limit testing to genes which show, on average, at least
 #' X-fold difference (log-scale) between the two groups of cells. Default is 0.1
 #' Increasing logfc.threshold speeds up the function, but can miss weaker signals.
@@ -77,14 +74,11 @@ ValidateCellGroups_Seurat <- function(
 #' DE test. This can provide speedups but might require higher memory;
 #' default is FALSE
 #'
-#'
 #' @importFrom Matrix rowMeans
 #' @importFrom stats p.adjust
 #'
-#' @rdname FindMarkersPACS
 #' @concept differential_expression
 #' @noRd
-#' @method FindMarkersPACS default
 #'
 .FindMarkersPACS_default <- function(
     object,
@@ -114,7 +108,7 @@ ValidateCellGroups_Seurat <- function(
   }
 
   ## validate input parameters
-  ValidateCellGroups_Seurat(
+  .ValidateCellGroups_Seurat(
     object = object,
     cells.1 = cells.1,
     cells.2 = cells.2,
@@ -176,7 +170,6 @@ ValidateCellGroups_Seurat <- function(
       cells.1 = cells.1,
       cells.2 = cells.2,
       features = features,
-      test.use = test.use,
       verbose = verbose,
       min.cells.feature = min.cells.feature,
       latent.vars = latent.vars,
@@ -228,10 +221,8 @@ ValidateCellGroups_Seurat <- function(
 #' slot "avg_diff".
 #' @param base The base with respect to which logarithms are computed.
 #'
-#' @rdname FindMarkersPACS
 #' @concept differential_expression
-#' @export
-#' @method FindMarkersPACS Assay
+#' @noRd
 #'
 .FindMarkersPACS_assay <- function(
     object,
@@ -251,12 +242,12 @@ ValidateCellGroups_Seurat <- function(
   ## for scATAC-seq data, we should use count slot
   data.slot <- "counts"
 
-  if (length(x = Layers(object = object, search = slot)) > 1) {
+  if (length(x = SeuratObject::Layers(object = object, search = slot)) > 1) {
     stop(slot, " layers are not joined. Please run JoinLayers")
   }
 
   ## obtain the data matrix
-  data.use <-  Seurat::GetAssayData(object = object, slot = data.slot)
+  data.use <-  SeuratObject::GetAssayData(object = object, slot = data.slot)
 
   ## calculate FC
   fc.results <- Seurat::FoldChange(
@@ -278,17 +269,136 @@ ValidateCellGroups_Seurat <- function(
     cells.1 = cells.1,
     cells.2 = cells.2,
     features = features,
-    test.use = test.use,
     fc.results = fc.results,
     ...
   )
   return(de.results)
 }
 
+# Function to get all the descendants on a tree of a given node
+#
+# @param tree Tree object (from ape package)
+# @param node Internal node in the tree
+#
+# @return Returns all descendants of the given node
+#
+.GetDescendants <- function(tree, node, curr = NULL) {
+  if (is.null(x = curr)) {
+    curr <- vector()
+  }
+  daughters <- tree$edge[which(x = tree$edge[, 1] == node), 2]
+  curr <- c(curr, daughters)
+  w <- which(x = daughters >= length(x = tree$tip))
+  if (length(x = w) > 0) {
+    for (i in 1:length(x = w)) {
+      curr <- .GetDescendants(tree = tree, node = daughters[w[i]], curr = curr)
+    }
+  }
+  return(curr)
+}
 
+#' Function to get all the descendants on a tree left of a given node
+#'
+#' @param tree Tree object (from ape package)
+#' @param node Internal node in the tree
+#'
+#' @return Returns all descendants left of the given node
+#' @noRd
+#'
+.GetLeftDescendantsSeurat <- function(tree, node) {
+  daughters <- tree$edge[which(tree$edge[, 1] == node), 2]
+  if (daughters[1] <= (tree$Nnode + 1)) {
+    return(daughters[1])
+  }
+  daughter.use <- .GetDescendants(tree, daughters[1])
+  daughter.use <- daughter.use[daughter.use <= (tree$Nnode + 1)]
+  return(daughter.use)
+}
+
+#' Function to get all the descendants on a tree right of a given node
+#'
+#' @param tree Tree object (from ape package)
+#' @param node Internal node in the tree
+#'
+#' @return Returns all descendants right of the given node
+#' @noRd
+.GetRightDescendantsSeurat <- function(tree, node) {
+  daughters <- tree$edge[which(x = tree$edge[, 1] == node), 2]
+  if (daughters[2] <= (tree$Nnode + 1)) {
+    return(daughters[2])
+  }
+  daughter.use <- .GetDescendants(tree = tree, node = daughters[2])
+  daughter.use <- daughter.use[daughter.use <= (tree$Nnode + 1)]
+  return(daughter.use)
+}
+
+#' Helper function for FindMarkers.Seurat and FoldChange.Seurat
+#' Convert idents to cells
+#'
+#' @importFrom methods is
+#' @noRd
+#'
+.IdentsToCells_Seurat <- function(
+    object,
+    ident.1,
+    ident.2,
+    cellnames.use
+) {
+  #
+  if (is.null(x = ident.1)) {
+    stop("Please provide ident.1")
+  } else if ((length(x = ident.1) == 1 && ident.1[1] == 'clustertree') || is(object = ident.1, class2 = 'phylo')) {
+    if (is.null(x = ident.2)) {
+      stop("Please pass a node to 'ident.2' to run FindMarkers on a tree")
+    }
+    tree <- if (is(object = ident.1, class2 = 'phylo')) {
+      ident.1
+    } else {
+      SeuratObject::Tool(object = object, slot = 'BuildClusterTree')
+    }
+    if (is.null(x = tree)) {
+      stop("Please run 'BuildClusterTree' or pass an object of class 'phylo' as 'ident.1'")
+    }
+    ident.1 <- tree$tip.label[.GetLeftDescendantsSeurat(tree = tree, node = ident.2)]
+    ident.2 <- tree$tip.label[.GetRightDescendantsSeurat(tree = tree, node = ident.2)]
+  }
+  if (length(x = as.vector(x = ident.1)) > 1 &&
+      any(as.character(x = ident.1) %in% cellnames.use)) {
+    bad.cells <- cellnames.use[which(x = !as.character(x = ident.1) %in% cellnames.use)]
+    if (length(x = bad.cells) > 0) {
+      stop(paste0("The following cell names provided to ident.1 are not present in the object: ", paste(bad.cells, collapse = ", ")))
+    }
+  } else {
+    ident.1 <- SeuratObject::WhichCells(object = object, idents = ident.1)
+  }
+  # if NULL for ident.2, use all other cells
+  if (length(x = as.vector(x = ident.2)) > 1 &&
+      any(as.character(x = ident.2) %in% cellnames.use)) {
+    bad.cells <- cellnames.use[which(!as.character(x = ident.2) %in% cellnames.use)]
+    if (length(x = bad.cells) > 0) {
+      stop(paste0("The following cell names provided to ident.2 are not present in the object: ", paste(bad.cells, collapse = ", ")))
+    }
+  } else {
+    if (is.null(x = ident.2)) {
+      ident.2 <- setdiff(x = cellnames.use, y = ident.1)
+    } else {
+      ident.2 <- SeuratObject::WhichCells(object = object, idents = ident.2)
+    }
+  }
+  return(list(cells.1 = ident.1, cells.2 = ident.2))
+}
+
+
+#' Differential test with PACS on Seurat object
+#' @description
+#' Run differential test using the similar style as in Seurat
+#' `Seurat::FindMarkers()` function.
+#' Note 1: This function is modified from Seurat package v5.1.0
+#' Note 2: Seurat must be installed to use this function.
+#' @param object A `Seurat` object
 #' @param ident.1 Identity class to define markers for; pass an object of class
 #' \code{phylo} or 'clustertree' to find markers for a node in a cluster tree;
-#' passing 'clustertree' requires \code{\link{BuildClusterTree}} to have been run
+#' passing 'clustertree' requires \code{BuildClusterTree} to have been run
 #' @param ident.2 A second identity class for comparison; if \code{NULL},
 #' use all other cells for comparison; if an object of class \code{phylo} or
 #' 'clustertree' is passed to \code{ident.1}, must pass a node to find markers for
@@ -296,14 +406,16 @@ ValidateCellGroups_Seurat <- function(
 #' performing differential expression (see example)
 #' @param subset.ident Subset a particular identity class prior to regrouping.
 #' Only relevant if group.by is set (see example)
-#' @param assay Assay to use in differential expression testing
+#' @param assay Assay to use in differential expression testing, for PACS, we
+#' use `count` as assay
 #' @param reduction Reduction to use in differential expression testing - will
 #' test for DE on cell embeddings
+#' @param latent.vars Latent variables to be controlled for from the meta.data
+#' column of the Seurat object
+#' @param ... Additional arguments for identifying differential peaks
 #'
-#' @rdname FindMarkersPACS
 #' @concept differential_expression
 #' @export
-#' @method FindMarkersPACS Seurat
 #'
 FindMarkersPACS <- function(
     object,
@@ -312,15 +424,21 @@ FindMarkersPACS <- function(
     latent.vars = NULL,
     group.by = NULL,
     subset.ident = NULL,
-    assay = NULL,
+    assay = "count",
     reduction = NULL,
     ...
 ) {
+
+  ## make sure object is a Seurat object
+  if (!is(object, "Seurat")) {
+    stop("Object must be a Seurat object")
+  }
+
   if (!is.null(x = group.by)) {
     if (!is.null(x = subset.ident)) {
       object <- subset(x = object, idents = subset.ident)
     }
-    Idents(object = object) <- group.by
+    SeuratObject::Idents(object = object) <- group.by
   }
   if (!is.null(x = assay) && !is.null(x = reduction)) {
     stop("Please only specify either assay or reduction.")
@@ -331,7 +449,7 @@ FindMarkersPACS <- function(
 
   # select which data to use
   if (is.null(x = reduction)) {
-    assay <- assay %||% DefaultAssay(object = object)
+    assay <- assay %||% SeuratObject::DefaultAssay(object = object)
     data.use <- object[[assay]]
     cellnames.use <-  colnames(x = data.use)
   } else {
@@ -339,7 +457,7 @@ FindMarkersPACS <- function(
     cellnames.use <- rownames(x = data.use)
   }
 
-  cells <- IdentsToCells(
+  cells <- .IdentsToCells_Seurat(
     object = object,
     ident.1 = ident.1,
     ident.2 = ident.2,
@@ -353,14 +471,14 @@ FindMarkersPACS <- function(
     USE.NAMES = TRUE
   )
   if (!all(vapply(X = cells, FUN = length, FUN.VALUE = integer(length = 1L)))) {
-    abort(
+    rlang::abort(
       message = "Cells in one or both identity groups are not present in the data requested"
     )
   }
 
   # fetch latent.vars
   if (!is.null(x = latent.vars)) {
-    latent.vars <- FetchData(
+    latent.vars <- SeuratObject::FetchData(
       object = object,
       vars = latent.vars,
       cells = c(cells$cells.1, cells$cells.2)
@@ -369,15 +487,18 @@ FindMarkersPACS <- function(
 
   # check normalization method
   norm.command <- paste0("NormalizeData.", assay)
-  norm.method <- if (norm.command %in% Command(object = object) && is.null(x = reduction)) {
-    Command(
+  norm.method <- if (norm.command %in% SeuratObject::Command(object = object) &&
+                     is.null(x = reduction)) {
+    SeuratObject::Command(
       object = object,
       command = norm.command,
       value = "normalization.method"
     )
-  } else if (length(x = intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"), y = Command(object = object)))) {
-    command <- intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"), y = Command(object = object))[1]
-    Command(
+  } else if (length(x = intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"),
+                                  y = SeuratObject::Command(object = object)))) {
+    command <- intersect(x = c("FindIntegrationAnchors", "FindTransferAnchors"),
+                         y = SeuratObject::Command(object = object))[1]
+    SeuratObject::Command(
       object = object,
       command = command,
       value = "normalization.method"
@@ -398,6 +519,83 @@ FindMarkersPACS <- function(
   return(de.results)
 }
 
+#' Perform differential expression testing using a logistic regression framework
+#'
+#' Constructs a logistic regression model predicting group membership based on a
+#' given feature and compares this to a null model with a likelihood ratio test.
+#'
+#' @param data.use expression matrix
+#' @param cells.1 Vector of cells in group 1
+#' @param cells2. Vector of cells in group 2
+#' @param latent.vars Latent variables to include in model
+#' @param verbose Print messages
+#'
+#' @importFrom stats as.formula
+#' @noRd
+.PACSTest <- function(
+    data.use,
+    cells.1,
+    cells.2,
+    latent.vars = NULL,
+    n_cores = NULL,
+    verbose = TRUE
+) {
+
+  if("group_test" %in% colnames(latent.vars)) {
+    colnames(latent.vars)[colnames(latent.vars) == "group_test"] <- "group_t"
+  }
+
+  ## assign group labels
+  group.info <- data.frame(row.names = c(cells.1, cells.2))
+  group.info[cells.1, "group_test"] <- "Group1"
+  group.info[cells.2, "group_test"] <- "Group2"
+
+  ## get data and meta.data
+  data.use <- data.use[, rownames(group.info), drop = FALSE]
+  latent.vars <- as.data.frame(latent.vars[rownames(group.info), , drop = FALSE])
+
+  ## calculate capturing rate
+  ctypes <- unique(group.info[, "group_test"])
+  r_by_ct_out <- PICsnATAC::get_r_by_ct_mat_pq(
+    cell_type_set = ctypes,
+    r_by_c = data.use,
+    cell_type_labels = group.info[, "group_test"],
+    n_features_per_cell = dim(data.use)[1]
+  )
+
+  ## get formula
+  fmla_full <- as.formula(object = paste(
+    " ~ group_test +",
+    paste(colnames(x = latent.vars), collapse = "+")
+  ))
+
+  fmla_null <- as.formula(object = paste(
+    " ~ ",
+    paste(colnames(x = latent.vars), collapse = "+")
+  ))
+
+  ## convert group info into factors
+  group.info[, "group_test"] <- factor(x = group.info[, "group_test"])
+  latent.vars$group_test <- group.info[, "group_test"]
+
+  if (is.null(n_cores)) {
+    cat("automatically determining number of cores", "\n")
+    n_cores <- future::nbrOfWorkers()
+  }
+
+  pacs_out <- pacs_test_logit(covariate_meta.data = latent.vars,
+                              formula_full = fmla_full,
+                              formula_null = fmla_null,
+                              pic_matrix = data.use,
+                              cap_rates = r_by_ct_out$q_vec,
+                              n_cores = n_cores)
+
+  p_val <- pacs_out$pacs_p_val
+
+  to.return <- data.frame(p_val, row.names = rownames(data.use))
+  return(to.return)
+}
+
 
 PerformDEPACS <- function(
     object,
@@ -416,7 +614,7 @@ PerformDEPACS <- function(
     data.use <- as.matrix(x = data.use)
   }
   de.results <-
-    LRDETest(
+    .PACSTest(
       data.use = data.use,
       cells.1 = cells.1,
       cells.2 = cells.2,
