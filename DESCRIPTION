@@ -16,7 +16,7 @@ Imports:
     stats,
     Matrix,
     parallel,
-    tictoc,
+    tictoc
 Remotes:
     Zhen-Miao/PICsnATAC
 License: MIT + file LICENSE
