@@ -185,7 +185,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       p_val_cumu <- unlist(p_cumu_list)
 
       ## convergence status
-      conv_cumu_list <- sapply(p_cumu, function(x) {
+      conv_cumu_list <- lapply(p_cumu, function(x) {
         matrix(x$pacs_converged, ncol = 2)
       })
       conv_cumu <- do.call(rbind, conv_cumu_list)
@@ -208,7 +208,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
       ## convergence status
       conv_logit_list <-
-        sapply(p_logit, function(x) matrix(x$pacs_converged, ncol = 2))
+        lapply(p_logit, function(x) matrix(x$pacs_converged, ncol = 2))
       conver_logit <- do.call(rbind, conv_logit_list)
     } else {
       ## p values
@@ -216,7 +216,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       p_val_logit <- p_logit_list[, 1, drop = TRUE]
 
       ## convergence status
-      conv_logit_list <- sapply(p_logit, function(x) x$pacs_converged)
+      conv_logit_list <- lapply(p_logit, function(x) x$pacs_converged)
       conver_logit <- matrix(conv_logit_list, ncol = 2)
       rownames(conver_logit) <- names(p_val_logit)
     }
@@ -231,7 +231,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
       ## convergence status
       conv_logit_list <-
-        sapply(p_logit, function(x) matrix(x$pacs_converged, ncol = 2))
+        lapply(p_logit, function(x) matrix(x$pacs_converged, ncol = 2))
       conver_logit <- do.call(rbind, conv_logit_list)
       rownames(conver_logit) <- names(p_val_logit)
       convergence <- conver_logit[p_names, ]
@@ -244,7 +244,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
 
       ## convergence status
       conv_cumu_list <-
-        sapply(p_cumu, function(x) matrix(x$pacs_converged, ncol = 2))
+        lapply(p_cumu, function(x) matrix(x$pacs_converged, ncol = 2))
       conv_cumu <- do.call(rbind, conv_cumu_list)
       rownames(conver_logit) <- names(p_val_logit)
       convergence <- conv_cumu[p_names, ]
