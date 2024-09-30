@@ -248,7 +248,7 @@ pacs_test_sparse <- function(covariate_meta.data, formula_full,
       conv_cumu_list <-
         lapply(p_cumu, function(x) matrix(x$pacs_converged, ncol = 2))
       conv_cumu <- do.call(rbind, conv_cumu_list)
-      rownames(conver_logit) <- names(p_val_logit)
+      rownames(conver_logit) <- names(p_val_cumu)
       convergence <- conv_cumu[p_names, ]
   }
 
