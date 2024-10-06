@@ -20,7 +20,7 @@
 #'   matrix in R.
 #' @param T_proportion_cutoff To determine the maximum value of T, we set
 #'   a criteria based on the proportion of reads that are >= T. This parameter
-#'   set this proportion. Default = 0.2
+#'   set this proportion. Default = 0.25
 #' @param cap_rates A vector of capturing probability for each cell
 #' @param par_initial_null Initialized values of estimated parameters for the
 #'   null model, we do not
@@ -41,7 +41,7 @@
 pacs_test_sparse <- function(covariate_meta.data, formula_full,
                              formula_null, pic_matrix,
                              n_peaks_per_round = NULL,
-                             T_proportion_cutoff = 0.2,
+                             T_proportion_cutoff = 0.25,
                              cap_rates, par_initial_null = NULL,
                              par_initial_full = NULL, n_cores = 1,
                              verbose = TRUE) {

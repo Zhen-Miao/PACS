@@ -3,14 +3,9 @@ library(Rfast)
 library('presto')
 library('edgeR')
 
-##################################################################
-## The functions in this file are only for comparing with other methods
-## we did not use functions here in the PACS workflow
-##################################################################
-
 
 ###################################
-## -- edgeR method
+## -- edgeR method in snapATAC package
 ## default recommended by snapATAC
 # 0.4 for human, 0.1 for mouse
 #######################################
@@ -28,27 +23,150 @@ snapATAC_method <- function(data_matrix_pos, data_matrix_neg,bcv){
   return(p_val_vec)
 }
 
+### form pseudo-bulk samples
+
+# Function to create pseudo-bulk observations from a matrix
+create_pseudo_bulk <- function(matrix, group_size) {
+  # Number of columns in the matrix
+  num_cols <- ncol(matrix)
+
+  # Randomly permute the column indices
+  shuffled_indices <- sample(num_cols)
+
+  # Initialize an empty list to store results
+  result_list <- list()
+
+  # Create groups and calculate row sums
+  for (start_idx in seq(1, num_cols, by = group_size)) {
+    # Determine the end index of the current group
+    end_idx <- min(start_idx + group_size - 1, num_cols)
+
+    # Subset the matrix columns for the current group
+    current_group <- matrix[, shuffled_indices[start_idx:end_idx], drop = FALSE]
+
+    # Calculate row sums for the current group and store in list
+    result_list[[length(result_list) + 1]] <- rowSums(current_group)
+  }
+
+  # Combine the list of vectors into a matrix
+  pseudo_bulk_matrix <- do.call(cbind, result_list)
+
+  # Optionally, name the columns to reflect group numbers
+  colnames(pseudo_bulk_matrix) <- paste("Group", 1:length(result_list))
+
+  return(pseudo_bulk_matrix)
+}
+
+
+
+###################################
+## -- edgeR method
+#######################################
+
+edgeR_pseudo_bulk <- function(pseudobulk_matrix_pos, pseudobulk_matrix_neg,
+                              filtering = FALSE){
+  ## load the edgeR package
+  require(edgeR)
+  ## first, group the two matrices together
+  data_use <- cbind(pseudobulk_matrix_pos, pseudobulk_matrix_neg)
+  data_use <- as.data.frame(data_use)
+  ## group label
+  group <- factor(c(rep(1, times = ncol(pseudobulk_matrix_pos)),
+                    rep(2, times = ncol(pseudobulk_matrix_neg))))
+  y <- DGEList(counts=data_use, group=group);
+  if(filtering){
+    keep <- filterByExpr(y)
+    y <- y[keep,,keep.lib.sizes=FALSE]
+  }
+  y <- calcNormFactors(y)
+  design <- model.matrix(~group)
+  y <- estimateDisp(y,design)
+
+  ## likelihood ratio test
+  fit <- glmFit(y,design)
+  lrt <- glmLRT(fit,coef=2)
+  p_val <- lrt$table$PValue
+
+  return(p_val)
+}
+
+###################################
+## -- edgeR multi-group
+#######################################
+
+edgeR_multi_group <- function(matrix_combined,
+                              design_mat,coef_test,
+                              filtering = FALSE){
+  if(is.null(coef_test)){
+    stop('coef_test cannot be null, choose between "group", "batch",
+         or "interaction"')
+  }else if(!(coef_test %in% c('group', 'batch', 'interaction') )){
+    stop('coef_test must be one of "group", "batch", or "interaction"')
+  }
+
+  if(colnames(design_mat) != c('group','batch')){
+    cat('this function is for internal evaluations only, so please do not use
+        unless the design matrix has two columns, group and batch')
+    stop('design matrix not supported, as this is for internal use only')
+  }
+
+  ## load the edgeR package
+  require(edgeR)
+  ## first, get data matrix
+  data_use <- matrix_combined
+  data_use <- as.data.frame(data_use)
+  ## group label
+  # design_df = as.data.frame(design_mat)
+
+  group <- factor(apply(design_mat, 1, paste, collapse = "_"))
+
+
+  y <- DGEList(counts=data_use, group=group);
+  if(filtering){
+    keep <- filterByExpr(y)
+    y <- y[keep,,keep.lib.sizes=FALSE]
+  }
+  y <- calcNormFactors(y)
+
+  ## get the design matrix
+  if(coef_test != 'interaction'){
+    design <- model.matrix(~0+group)
+    colnames(design)<-levels(group)
+  }else{
+    design <- model.matrix(~group*batch, data=design_mat)
+  }
+
+  y <- estimateDisp(y, design)
+
+  ## likelihood ratio test
+  fit <- glmQLFit(y, design)
+  if(coef_test == 'group'){
+    lrt <- glmQLFTest(fit,contrast = c(1,1,-1,-1))
+  }else if(coef_test == 'batch'){
+    lrt <- glmQLFTest(fit,contrast = c(1,-1,1,-1))
+  }else if(coef_test == 'interaction'){
+    lrt <- glmQLFTest(fit, coef=3)
+  }
+
+  p_val <- lrt$table$PValue
+
+  return(p_val)
+}
+
+
 ######################################################################
-## the same thing, but accelerated
+## Seurat -- accelerated
 ######################################################################
-seurat_method2_subsample <- function(data_matrix_pos, data_matrix_neg, peak_region_fragments){
+seurat_method2_acc <- function(data_matrix_pos, data_matrix_neg, peak_region_fragments){
   data.use <- cbind(data_matrix_pos, data_matrix_neg)
   group.info <- c(rep(0,times = dim(data_matrix_pos)[2]),
                   rep(1,times = dim(data_matrix_neg)[2]) )
 
-  # group.info <- as.factor(group.info)
-  # peak_region_fragments <- Rfast::colsums(data.use)
   ## data.use should be feature by cell matrix
   n_features <- dim(data.use)[1]
   p_val <- vector(length = n_features)
   for(i in 1:n_features){
     X1 = cbind(data.use[i, ],peak_region_fragments)
-    # model.data <- data.frame(GENE = data.use[i, ], group.info = group.info,
-    #                          peak_region_fragments = peak_region_fragments)
-    # model1 <- glm(formula = group.info ~ GENE + peak_region_fragments,
-    #               data = model.data, family = binomial)
-    # model2 <- glm(formula = group.info ~ peak_region_fragments,
-    #               data = model.data, family = binomial)
     model1 <- glm_logistic(x = X1, y = group.info)
     model2 <- glm_logistic(x = peak_region_fragments,y = group.info)
     p_val[i] <- pchisq(model2$devi - model1$devi, df = 1,lower.tail = F)
@@ -72,49 +190,44 @@ seurat_method3_subsample <- function(data_matrix, x_null, group.info){
   return(p_val)
 }
 
-#############################################################
-## this function is only for evaluation of the Seurat method
-## for the test of its ability to detect significant effect
-## of other covariates
-#############################################################
-seurat_method3_other_factors <- function(data_matrix, x_null, group_info, batch_info){
+
+###################################
+## -- standard logit regression model
+#######################################
+snapATAC2_method <- function(data_matrix, x_null, group.info){
+
+  if(is.character(group.info)){
+    group.info = as.integer(as.factor(group.info))
+    group.info = group.info - min(group.info)
+  }else if(!(is.numeric(group.info) | is.integer(group.info))){
+    stop('group.info must be integer or character of group types')
+  }
+
+  ## binarize the matrix in case it is not already in binary mat
+  if(inherits(data_matrix, "sparseMatrix")){
+    if(!(all(data_matrix@x == 1))){
+      data_matrix@x = rep(1, length(data_matrix@x))
+    }
+  }else if(is.matrix(data_matrix)){
+    data_matrix = (data_matrix >0) * 1
+  }
 
   ## data_matrix should be feature by cell matrix
   n_features <- dim(data_matrix)[1]
   p_val <- vector(length = n_features)
   for(i in 1:n_features){
-    X_null_AC = cbind(x_null,data_matrix[i, ])
-    X_1 = cbind(X_null_AC, batch_info)
+    dmi = data_matrix[i, ]
+    X1 = cbind(x_null,group.info)
 
-    model1 <- glm_logistic(x = X_1, y = group_info)
-    model2 <- glm_logistic(x = X_null_AC,y = group_info)
+    model1 <- Rfast::glm_logistic(x = X1, y = dmi)
+    model2 <- Rfast::glm_logistic(x = x_null,y = dmi)
     p_val[i] <- pchisq(model2$devi - model1$devi, df = 1,lower.tail = F)
   }
   return(p_val)
 }
 
 
-# ## the same thing, but accelerated
-# seurat_method2_subsample_change_response <- function(data_matrix_pos, data_matrix_neg, peak_region_fragments){
-#   data.use <- cbind(data_matrix_pos, data_matrix_neg)
-#   group.info <- c(rep('A',times = dim(data_matrix_pos)[2]),
-#                   rep('B',times = dim(data_matrix_neg)[2]) )
-#   group.info <- as.factor(group.info)
-#   # peak_region_fragments <- Rfast::colsums(data.use)
-#   ## data.use should be feature by cell matrix
-#   n_features <- dim(data.use)[1]
-#   p_val <- vector(length = n_features)
-#   for(i in 1:n_features){
-#     model.data <- data.frame(GENE = data.use[i, ], group.info = group.info,
-#                              peak_region_fragments = peak_region_fragments)
-#     model1 <- glm(formula = GENE ~ group.info + peak_region_fragments,
-#                   data = model.data, family = binomial)
-#     model2 <- glm(formula = GENE ~ peak_region_fragments,
-#                   data = model.data, family = binomial)
-#     p_val[i] <- pchisq(model2$deviance - model1$deviance, df = 1,lower.tail = F)
-#   }
-#   return(p_val)
-# }
+
 
 ######################################################################
 ## fisher
