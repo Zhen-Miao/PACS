@@ -73,9 +73,10 @@ Notebook 1: [Type 1 error and power evaluation in real data
 
 ## Citation:
 
-Miao, Z., Wang, J., Park, K. Kuang, D. and Kim, J. **Model-based
-compound hypothesis testing for snATAC-seq data with PACS.** *bioRxiv*
-(2023). <https://www.biorxiv.org/content/10.1101/2023.07.30.551108v1>
+Miao, Z., Wang, J., Park, K., Kuang, D. and Kim, J. **Depth-corrected
+multi-factor dissection of chromatin accessibility for scATAC-seq data
+with PACS.** *Nature Communications* 16, 346 (2025).
+<https://doi.org/10.1038/s41467-024-55580-5>
 
 ## snATAC-seq toolkits
 
