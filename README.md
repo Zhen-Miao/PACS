@@ -17,6 +17,10 @@ framework.</figcaption>
 
 PACS is a toolkit for snATAC-seq data analysis.
 
+> **Python user?** A Python implementation is available at
+> [pacs-py](https://github.com/Zhen-Miao/pacs-py), with
+> AnnData/scanpy integration.
+
 The key functionalities of PACS include:
 
 1)  Depth correction for snATAC-seq data.
@@ -77,6 +81,9 @@ compound hypothesis testing for snATAC-seq data with PACS.** *bioRxiv*
 
 PACS is one of the snATAC-seq toolkits developed by the Kim lab. Other
 toolkits include:
+
+- [**pacs-py**](https://github.com/Zhen-Miao/pacs-py) -- Python
+  implementation of PACS, with AnnData/scanpy integration
 
 - [**PICsnATAC**](https://github.com/Zhen-Miao/PICsnATAC)
 
