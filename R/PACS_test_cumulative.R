@@ -25,6 +25,10 @@
 #'   `"exact"` uses the proper cumulative-logit likelihood with capture-rate
 #'   correction (Option B in `notes/cumulative_logit_math.md`); valid LRT df
 #'   and unbiased β estimates.
+#' @param pvalue_method One of `"chisq"` (default) or `"saddlepoint"`.
+#'   `"saddlepoint"` uses the Barndorff-Nielsen r* adjustment for improved
+#'   tail accuracy when testing a single parameter (df = 1). Falls back to
+#'   chi-squared when df > 1 or when method = "stacked".
 #'
 #' @return A list of two elements, pacs_converged is a vector
 #'   of length 2*n_peaks representing the convergence status
@@ -37,8 +41,10 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
                            formula_null, pic_matrix, max_T = 2,
                            cap_rates, par_initial_null = NULL,
                            par_initial_full = NULL, n_cores = 1,
-                           method = c("stacked", "exact")) {
+                           method = c("stacked", "exact"),
+                           pvalue_method = c("chisq", "saddlepoint")) {
   method <- match.arg(method)
+  pvalue_method <- match.arg(pvalue_method)
   if (method == "exact") {
     return(pacs_test_cumu_exact(
       covariate_meta.data = covariate_meta.data,
@@ -49,7 +55,8 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
       cap_rates = cap_rates,
       par_initial_null = par_initial_null,
       par_initial_full = par_initial_full,
-      n_cores = n_cores
+      n_cores = n_cores,
+      pvalue_method = pvalue_method
     ))
   }
 
@@ -170,7 +177,8 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
 pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
                                  formula_null, pic_matrix, max_T,
                                  cap_rates, par_initial_null,
-                                 par_initial_full, n_cores) {
+                                 par_initial_full, n_cores,
+                                 pvalue_method = "chisq") {
   X_full <- model.matrix(formula_full, data = covariate_meta.data)
   X_null <- model.matrix(formula_null, data = covariate_meta.data)
 
@@ -248,6 +256,8 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
     theta_estimated_null = null_para,
     q_vec = cap_rates, c_by_r = c_by_r, T = T,
     df_test = length(beta_poi_idx),
+    hold_zero = hold_zero,
+    pvalue_method = pvalue_method,
     mc.cores = n_cores
   )
   names(pacs_p_val) <- rownames(pic_matrix)

@@ -20,7 +20,10 @@
 compare_models_cumu <- function(x_full, theta_estimated_full,
                                 theta_estimated_null,
                                 q_vec, c_by_r, T, df_test,
+                                hold_zero = NULL,
+                                pvalue_method = c("chisq", "saddlepoint"),
                                 mc.cores = 1L) {
+  pvalue_method <- match.arg(pvalue_method)
   if ("sparseMatrix" %in% is(c_by_r)) {
     c_by_r <- as.matrix(c_by_r)
   }
@@ -28,6 +31,9 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
   if (n_features != ncol(c_by_r)) {
     stop("theta dimension does not match c_by_r")
   }
+
+  use_saddlepoint <- (pvalue_method == "saddlepoint" &&
+                      df_test == 1L && !is.null(hold_zero))
 
   per_peak <- function(j) {
     M_j <- as.numeric(c_by_r[, j])
@@ -46,7 +52,13 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
     if (!is.finite(ll_full) || !is.finite(ll_null)) return(NA_real_)
     stat <- 2 * (ll_full - ll_null)
     if (stat < 0) stat <- 0
-    pchisq(stat, df = df_test, lower.tail = FALSE)
+    if (use_saddlepoint) {
+      saddlepoint_pvalue_scalar(stat, th_full, th_null,
+                                psi_idx = hold_zero,
+                                X = x_full, M = M_j, q = q_vec, T = T)
+    } else {
+      pchisq(stat, df = df_test, lower.tail = FALSE)
+    }
   }
 
   pvals <- unlist(parallel::mclapply(seq_len(n_features), per_peak,

@@ -304,6 +304,77 @@ loss_fun_star_cumu <- function(theta, X, M, q, T, inf_mat = NULL) {
 }
 
 
+## --- Barndorff-Nielsen r* saddlepoint adjustment (df = 1) ----------------
+
+## EXPERIMENTAL. For testing a scalar ψ (one β component), replaces the
+## first-order chi-squared tail probability with the Barndorff-Nielsen r*
+## approximation, which targets O(n^{-3/2}) tail accuracy.
+##
+## Important: simulation shows the Firth-corrected chi-squared reference
+## is already very well calibrated (KS > 0.4 at n=300, > 0.9 at n=80),
+## and the r* correction can DEGRADE calibration because Firth's penalty
+## already absorbs the O(1/n) bias that r* targets. The two corrections
+## are alternative approaches to the same asymptotic deficiency; combining
+## them produces over-correction. Use this only for research comparisons,
+## not as a production default. See math note §9.1 for the full analysis.
+##
+## Implementation uses the unpenalized signed-root LRT with the full
+## profile score (no S_λ=0 shortcut, since the Firth MLE zeros ∂ℓ*/∂λ
+## not ∂ℓ/∂λ). Falls back to pchisq when: df > 1, r ≈ 0, sign mismatch,
+## or non-positive profile information.
+saddlepoint_pvalue_scalar <- function(stat_pen, th_full, th_null, psi_idx,
+                                      X, M, q, T) {
+  if (stat_pen <= 0) return(1.0)
+
+  lam_idx <- setdiff(seq_along(th_full), psi_idx)
+
+  ## Unpenalized LRT signed root (consistent with unpenalized score/info).
+  ll_full_unpen <- loss_fun_cumu(th_full, X, M, q, T)
+  ll_null_unpen <- loss_fun_cumu(th_null, X, M, q, T)
+  stat_unpen <- max(0, 2 * (ll_full_unpen - ll_null_unpen))
+  r <- sign(th_full[psi_idx] - th_null[psi_idx]) * sqrt(stat_unpen)
+
+  ## Profile Fisher information at full MLE (Schur complement).
+  I_full <- infor_mat_cumu(th_full, X, q, T)
+  I_pp <- I_full[psi_idx, psi_idx]
+  I_pl <- I_full[psi_idx, lam_idx, drop = FALSE]
+  I_ll_full <- I_full[lam_idx, lam_idx, drop = FALSE]
+  I_ll_full_inv <- try(solve(I_ll_full), silent = TRUE)
+  if (is_error_cumu(I_ll_full_inv)) {
+    return(pchisq(stat_pen, df = 1L, lower.tail = FALSE))
+  }
+  J_profile <- as.numeric(I_pp - I_pl %*% I_ll_full_inv %*% t(I_pl))
+
+  if (J_profile <= 0) {
+    return(pchisq(stat_pen, df = 1L, lower.tail = FALSE))
+  }
+
+  ## Full profile score at null MLE: S_{ψ.λ} = S_ψ - I_ψλ I_λλ^{-1} S_λ.
+  ## (No shortcut: Firth MLE zeros ∂ℓ*/∂λ, not ∂ℓ/∂λ.)
+  s_unpen <- loss_gradient_cumu(th_null, X, M, q, T)
+  if (anyNA(s_unpen)) {
+    return(pchisq(stat_pen, df = 1L, lower.tail = FALSE))
+  }
+  I_null <- infor_mat_cumu(th_null, X, q, T)
+  I_ll_null <- I_null[lam_idx, lam_idx, drop = FALSE]
+  I_pl_null <- I_null[psi_idx, lam_idx, drop = FALSE]
+  I_ll_null_inv <- try(solve(I_ll_null), silent = TRUE)
+  if (is_error_cumu(I_ll_null_inv)) {
+    return(pchisq(stat_pen, df = 1L, lower.tail = FALSE))
+  }
+  S_psi_profile <- s_unpen[psi_idx] -
+    as.numeric(I_pl_null %*% I_ll_null_inv %*% s_unpen[lam_idx])
+  u <- S_psi_profile / sqrt(J_profile)
+
+  if (abs(r) < 1e-7 || (u / r) <= 0) {
+    return(pchisq(stat_pen, df = 1L, lower.tail = FALSE))
+  }
+
+  r_star <- r + (1 / r) * log(u / r)
+  2 * pnorm(-abs(r_star))
+}
+
+
 ## --- warm-start from data ------------------------------------------------
 
 ## §7 initialisation. Returns θ = (ã, β = 0) of length T + p_beta.
