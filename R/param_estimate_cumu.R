@@ -429,10 +429,14 @@ estimate_parameters_cumu <- function(r_by_c, X, theta_initial, q_vec, T,
   }
   cells_by_region <- t(r_by_c)
   cells_by_region <- as.list(as.data.frame(cells_by_region))
-  res <- parallel::mclapply(cells_by_region,
-                            FUN = irls_iter_cumu,
-                            X = X, theta_estimated = theta_initial,
-                            q_vec = q_vec, T = T, mc.cores = mc.cores)
+  ## Closure avoids name collision between mclapply's first parameter `X`
+  ## and the design matrix `X` we need to pass to irls_iter_cumu.
+  fit_one <- function(M_vec) {
+    irls_iter_cumu(M_vec, X = X, theta_estimated = theta_initial,
+                   q_vec = q_vec, T = T)
+  }
+  res <- parallel::mclapply(cells_by_region, FUN = fit_one,
+                            mc.cores = mc.cores)
   do.call(cbind, res)
 }
 
@@ -444,10 +448,11 @@ estimate_parameters_cumu_null <- function(r_by_c, X, theta_initial, hold_zero,
   }
   cells_by_region <- t(r_by_c)
   cells_by_region <- as.list(as.data.frame(cells_by_region))
-  res <- parallel::mclapply(cells_by_region,
-                            FUN = irls_iter_cumu_null,
-                            X = X, theta_estimated = theta_initial,
-                            hold_zero = hold_zero,
-                            q_vec = q_vec, T = T, mc.cores = mc.cores)
+  fit_one <- function(M_vec) {
+    irls_iter_cumu_null(M_vec, X = X, theta_estimated = theta_initial,
+                        hold_zero = hold_zero, q_vec = q_vec, T = T)
+  }
+  res <- parallel::mclapply(cells_by_region, FUN = fit_one,
+                            mc.cores = mc.cores)
   do.call(cbind, res)
 }
