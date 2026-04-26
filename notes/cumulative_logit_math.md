@@ -130,9 +130,13 @@ Let `Δ_{ik} = p_{ik} − p_{i,k+1}` and `D_{ik} = u_{ik} − u_{i,k+1}` (with
 
 ```
 ∂ℓ_i/∂β   = D_{i,m_i} / Δ_{i,m_i} · x_i,
-∂ℓ_i/∂α_t = ( u_{it} / Δ_{i,m_i} ) · 1[t = m_i]
-            − ( u_{it} / Δ_{i,m_i} ) · 1[t = m_i + 1].
+∂ℓ_i/∂α_t = (u_{i,m_i}   / Δ_{i,m_i}) · 1[t = m_i]
+            − (u_{i,m_i+1} / Δ_{i,m_i}) · 1[t = m_i + 1].
 ```
+
+(The numerator differs in the two indicator branches — `u_{i,m_i}` for the
+`t = m_i` term and `u_{i,m_i+1}` for the `t = m_i + 1` term — because
+`∂p_{ik}/∂α_t = u_{ik}·1[k = t]`.)
 
 For cells with `m_i = 0`:
 
@@ -387,6 +391,15 @@ active at the optimum (i.e. some `exp(ã_t)` is at the lower clip), the
 parameter is on the boundary and the LRT follows a mixture of χ²
 distributions per Self–Liang. In practice we should flag fits that hit the
 clip and either widen the clip or report a warning rather than a p-value.
+
+**Boundary detection threshold.** `compare_models_cumu` flags peaks where
+any `exp(ã_t) < 1e−3` for `t ≥ 2`. At that threshold,
+`α_{t−1} − α_t < 0.001`, which is effectively zero on the logit scale —
+adjacent cumulative probabilities differ by less than ~0.025 percentage
+points near `p = 0.5`. The threshold is conservative; tightening it (say
+`1e−4`) would suppress fewer peaks but risk false negatives on borderline
+fits. We can expose this as an argument once usage patterns clarify
+whether tuning is needed.
 
 ## 10. Implementation plan
 

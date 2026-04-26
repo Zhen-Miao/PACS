@@ -54,13 +54,21 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
 
   ## Boundary check (math note §9): warn if any fitted exp(atilde_t) for
   ## t >= 2 is essentially zero, indicating an active order constraint.
+  ## Threshold 1e-3 corresponds to alpha_{t-1} - alpha_t < 0.001, which
+  ## is effectively zero on the logit scale (cumulative probabilities at
+  ## adjacent thresholds differ by less than ~0.025 percentage points
+  ## near p = 0.5). At that point the Self-Liang mixture-of-chi-square
+  ## regime applies and the standard chi^2 p-value over-estimates
+  ## significance. Tunable via `boundary_eps` if exposed; see math note
+  ## §9 for the full discussion.
+  boundary_eps <- 1e-3
   if (T >= 2L) {
     a_block_full <- theta_estimated_full[2:T, , drop = FALSE]
-    near_boundary <- which(apply(exp(a_block_full) < 1e-3, 2, any))
+    near_boundary <- which(apply(exp(a_block_full) < boundary_eps, 2, any))
     if (length(near_boundary) > 0L) {
       warning(sprintf(
-        "%d peak(s) hit the order-constraint boundary; chi-square approximation may be unreliable.",
-        length(near_boundary)
+        "%d peak(s) hit the order-constraint boundary (exp(atilde_t) < %g); chi-square approximation may be unreliable.",
+        length(near_boundary), boundary_eps
       ))
     }
   }

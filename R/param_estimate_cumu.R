@@ -267,6 +267,14 @@ infor_mat_cumu <- function(theta, X, q, T) {
 ## --- Firth penalty (numerical FD on ∂I/∂θ_r) -----------------------------
 
 ## Penalty score: 0.5 * tr(I^{-1} ∂I/∂θ_r), r = 1..(T + p_beta).
+##
+## Phase 1 uses central finite differences on infor_mat_cumu, which costs
+## 2*(T + p_beta) Fisher-info evaluations per IRLS step. This is the
+## dominant cost of the inner loop and is responsible for the loosened
+## 1e-4 tolerance in the T=1 IRLS parity test (vs. 1e-10 for the
+## individual loss/score/info parity). An analytic ∂I/∂θ_r is in
+## scope for a follow-up using ∂u_{it}/∂η = u_{it}(1 − 2 p_{it}); see
+## the math note §5 and follow-up issue tracking the replacement.
 loss_grad_pen_cumu <- function(theta, X, q, T,
                                inf_mat = NULL, h = 1e-5) {
   if (is.null(inf_mat)) inf_mat <- infor_mat_cumu(theta, X, q, T)
