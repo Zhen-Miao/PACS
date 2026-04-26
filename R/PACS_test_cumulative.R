@@ -20,6 +20,11 @@
 #'   null model, we do not
 #'   need to specify unless there are reasons to do so. Default = NULL
 #' @param n_cores number of cores for multi-core computation
+#' @param method One of `"stacked"` (default, back-compat) or `"exact"`.
+#'   `"stacked"` uses the original stack-and-treat-as-binary approximation.
+#'   `"exact"` uses the proper cumulative-logit likelihood with capture-rate
+#'   correction (Option B in `notes/cumulative_logit_math.md`); valid LRT df
+#'   and unbiased β estimates.
 #'
 #' @return A list of two elements, pacs_converged is a vector
 #'   of length 2*n_peaks representing the convergence status
@@ -31,7 +36,23 @@
 pacs_test_cumu <- function(covariate_meta.data, formula_full,
                            formula_null, pic_matrix, max_T = 2,
                            cap_rates, par_initial_null = NULL,
-                           par_initial_full = NULL, n_cores = 1) {
+                           par_initial_full = NULL, n_cores = 1,
+                           method = c("stacked", "exact")) {
+  method <- match.arg(method)
+  if (method == "exact") {
+    return(pacs_test_cumu_exact(
+      covariate_meta.data = covariate_meta.data,
+      formula_full = formula_full,
+      formula_null = formula_null,
+      pic_matrix = pic_matrix,
+      max_T = max_T,
+      cap_rates = cap_rates,
+      par_initial_null = par_initial_null,
+      par_initial_full = par_initial_full,
+      n_cores = n_cores
+    ))
+  }
+
   ### construct model matrix
   X_full <- model.matrix(formula_full, data = covariate_meta.data)
   X_null <- model.matrix(formula_null, data = covariate_meta.data)
@@ -140,4 +161,96 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
 
 
   return(list(pacs_converged = conv_mat, pacs_p_val = pacs_p_val))
+}
+
+
+## Exact-likelihood path. Internal driver invoked from pacs_test_cumu when
+## method = "exact". See notes/cumulative_logit_math.md for the model;
+## fitting routines live in R/param_estimate_cumu.R.
+pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
+                                 formula_null, pic_matrix, max_T,
+                                 cap_rates, par_initial_null,
+                                 par_initial_full, n_cores) {
+  X_full <- model.matrix(formula_full, data = covariate_meta.data)
+  X_null <- model.matrix(formula_null, data = covariate_meta.data)
+
+  ## Strip leading intercept columns (alpha plays the intercept role per
+  ## threshold). Both formulas should produce a leading "(Intercept)" column.
+  if ("(Intercept)" %in% colnames(X_full)) {
+    X_full <- X_full[, setdiff(colnames(X_full), "(Intercept)"), drop = FALSE]
+  }
+  if ("(Intercept)" %in% colnames(X_null)) {
+    X_null <- X_null[, setdiff(colnames(X_null), "(Intercept)"), drop = FALSE]
+  }
+
+  ## Identify parameters of interest (in full but not null) and re-order so
+  ## they sit at the end of the design matrix.
+  pars_of_interest <- setdiff(colnames(X_full), colnames(X_null))
+  if (length(pars_of_interest) == 0L) {
+    stop("formula_full and formula_null have the same covariates; nothing to test.")
+  }
+  X_full <- X_full[, c(colnames(X_null), pars_of_interest), drop = FALSE]
+  p_beta <- ncol(X_full)
+  T <- max_T
+
+  ## hold_zero indices in the full theta = (atilde_1..T, beta_1..p):
+  ## thresholds always free; betas of interest set to zero under null.
+  beta_poi_idx <- which(colnames(X_full) %in% pars_of_interest)
+  hold_zero <- T + beta_poi_idx
+
+  ## Initial values: warm-start atilde from the entry-pooled empirical
+  ## marginals of pic_matrix; beta = 0. Single shared starting point for
+  ## all peaks (matches the binary path's `par_initial = rep.int(0.05, n)`
+  ## convention).
+  if (is.null(par_initial_full) || length(par_initial_full) != T + p_beta) {
+    M_pool <- as.numeric(if ("sparseMatrix" %in% is(pic_matrix)) {
+      as.matrix(pic_matrix)
+    } else {
+      pic_matrix
+    })
+    par_initial_full <- warm_start_theta(
+      M = M_pool, q = cap_rates, T = T, p_beta = p_beta
+    )
+  }
+  if (is.null(par_initial_null)) {
+    par_initial_null <- par_initial_full
+  } else if (length(par_initial_null) != T + p_beta) {
+    par_initial_null <- par_initial_full
+  }
+  par_initial_null[hold_zero] <- 0
+
+  null_para <- estimate_parameters_cumu_null(
+    r_by_c = pic_matrix, X = X_full, theta_initial = par_initial_null,
+    hold_zero = hold_zero, q_vec = cap_rates, T = T, mc.cores = n_cores
+  )
+  full_para <- estimate_parameters_cumu(
+    r_by_c = pic_matrix, X = X_full, theta_initial = par_initial_full,
+    q_vec = cap_rates, T = T, mc.cores = n_cores
+  )
+
+  conv_mat <- c(
+    null_para[nrow(null_para), ],
+    full_para[nrow(full_para), ]
+  )
+  null_para <- null_para[seq_len(nrow(null_para) - 1L), , drop = FALSE]
+  full_para <- full_para[seq_len(nrow(full_para) - 1L), , drop = FALSE]
+
+  if ("sparseMatrix" %in% is(pic_matrix)) {
+    M_dense <- as.matrix(pic_matrix)
+  } else {
+    M_dense <- pic_matrix
+  }
+  c_by_r <- t(M_dense)
+
+  pacs_p_val <- compare_models_cumu(
+    x_full = X_full,
+    theta_estimated_full = full_para,
+    theta_estimated_null = null_para,
+    q_vec = cap_rates, c_by_r = c_by_r, T = T,
+    df_test = length(beta_poi_idx),
+    mc.cores = n_cores
+  )
+  names(pacs_p_val) <- rownames(pic_matrix)
+
+  list(pacs_converged = conv_mat, pacs_p_val = pacs_p_val)
 }
