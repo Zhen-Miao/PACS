@@ -1,5 +1,82 @@
 ### differential_identification
 
+
+## Penalised LRT under the exact cumulative-logit model (method = "exact" in
+## pacs_test_cumu). Mirrors compare_models() below but evaluates the
+## cumulative-logit penalised log-likelihood per peak via
+## loss_fun_star_cumu(); fitting routines live in R/param_estimate_cumu.R
+## and the math is in notes/cumulative_logit_math.md (§9).
+##
+## Args:
+##   x_full              : n × p design matrix (alpha-free; alpha lives in theta).
+##   theta_estimated_full: (T + p) × n_features matrix of fitted thetas (full).
+##   theta_estimated_null: (T + p) × n_features matrix of fitted thetas (null).
+##   q_vec               : length-n capture rates.
+##   c_by_r              : n × n_features observed-count matrix.
+##   T                   : number of thresholds.
+##   df_test             : degrees of freedom = number of beta components held
+##                         to zero under null (thresholds are shared).
+##   mc.cores            : passed to mclapply.
+compare_models_cumu <- function(x_full, theta_estimated_full,
+                                theta_estimated_null,
+                                q_vec, c_by_r, T, df_test,
+                                mc.cores = 1L) {
+  if ("sparseMatrix" %in% is(c_by_r)) {
+    c_by_r <- as.matrix(c_by_r)
+  }
+  n_features <- ncol(theta_estimated_full)
+  if (n_features != ncol(c_by_r)) {
+    stop("theta dimension does not match c_by_r")
+  }
+
+  per_peak <- function(j) {
+    M_j <- as.numeric(c_by_r[, j])
+    th_full <- theta_estimated_full[, j]
+    th_null <- theta_estimated_null[, j]
+    ## Penalised log-likelihoods at the two MLEs.
+    I_full <- try(infor_mat_cumu(th_full, x_full, q_vec, T), silent = TRUE)
+    I_null <- try(infor_mat_cumu(th_null, x_full, q_vec, T), silent = TRUE)
+    if (inherits(I_full, "try-error") || inherits(I_null, "try-error")) {
+      return(NA_real_)
+    }
+    ll_full <- loss_fun_star_cumu(th_full, x_full, M_j, q_vec, T,
+                                  inf_mat = I_full)
+    ll_null <- loss_fun_star_cumu(th_null, x_full, M_j, q_vec, T,
+                                  inf_mat = I_null)
+    if (!is.finite(ll_full) || !is.finite(ll_null)) return(NA_real_)
+    stat <- 2 * (ll_full - ll_null)
+    if (stat < 0) stat <- 0
+    pchisq(stat, df = df_test, lower.tail = FALSE)
+  }
+
+  pvals <- unlist(parallel::mclapply(seq_len(n_features), per_peak,
+                                     mc.cores = mc.cores))
+
+  ## Boundary check (math note §9): warn if any fitted exp(atilde_t) for
+  ## t >= 2 is essentially zero, indicating an active order constraint.
+  ## Threshold 1e-3 corresponds to alpha_{t-1} - alpha_t < 0.001, which
+  ## is effectively zero on the logit scale (cumulative probabilities at
+  ## adjacent thresholds differ by less than ~0.025 percentage points
+  ## near p = 0.5). At that point the Self-Liang mixture-of-chi-square
+  ## regime applies and the standard chi^2 p-value over-estimates
+  ## significance. Tunable via `boundary_eps` if exposed; see math note
+  ## §9 for the full discussion.
+  boundary_eps <- 1e-3
+  if (T >= 2L) {
+    a_block_full <- theta_estimated_full[2:T, , drop = FALSE]
+    near_boundary <- which(apply(exp(a_block_full) < boundary_eps, 2, any))
+    if (length(near_boundary) > 0L) {
+      warning(sprintf(
+        "%d peak(s) hit the order-constraint boundary (exp(atilde_t) < %g); chi-square approximation may be unreliable.",
+        length(near_boundary), boundary_eps
+      ))
+    }
+  }
+
+  pvals
+}
+
+
 #' Compute loss function with Firth regularization from Wii matrix
 #'
 #' @param wii_sqrt The square root of Wii diagonal elements as a vector
