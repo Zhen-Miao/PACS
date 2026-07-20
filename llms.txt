@@ -1,0 +1,146 @@
+# PACS
+
+![Illustration of PACS
+framework.](reference/figures/README-PACS_illustration.svg)
+
+Illustration of PACS framework.
+
+## PACS (Probabilistic model for Accessible Chromatin data in Single Cell)
+
+PACS is a toolkit for snATAC-seq data analysis.
+
+The key functionalities of PACS include:
+
+1.  Depth correction for snATAC-seq data.
+2.  Statistical test for complex data design
+3.  Supervised cell type annotation (with a reference dataset)
+4.  Batch effect correction enabled by statistical test framework
+
+## Installation
+
+You can install the current version of PACS from
+[GitHub](https://github.com/) with:
+
+``` r
+
+# install.packages("devtools")
+devtools::install_github("Zhen-Miao/PICsnATAC") ## dependent package 
+devtools::install_github("Zhen-Miao/PACS")
+```
+
+This installation step should take `< 5 min` on a standard desktop
+machine. R version `> 4.0.0` is recommended (older R version has not
+been tested).
+
+## Example
+
+This is a basic example which shows you how to run PACS common workflow:
+
+``` r
+
+library(PACS)
+
+p_vals <- pacs_test_sparse(
+  covariate_meta.data = meta.data,
+  formula_full = ~ factor(cell_type) + factor(batch),
+  formula_null = ~ factor(batch),
+  pic_matrix = data_mat,
+  cap_rates = capturing_probability
+)
+```
+
+## Vignette and Interactive Notebooks
+
+An interactive tutorial website with vignettes can be found at
+
+<https://zhen-miao.github.io/PACS/>
+
+Although not recommended, you can also run the analysis using Goolge
+Colab, with one example shown below:
+
+Notebook 1: [Type 1 error and power evaluation in real data
+.](https://github.com/Zhen-Miao/PACS/blob/main/vignettes/Notebook_1_Test_For_Sens_Spec_real_kidney_data.ipynb)
+
+## Citation:
+
+Miao, Z., Wang, J., Park, K. Kuang, D. and Kim, J. **Model-based
+compound hypothesis testing for snATAC-seq data with PACS.** *bioRxiv*
+(2023). <https://www.biorxiv.org/content/10.1101/2023.07.30.551108v1>
+
+## snATAC-seq toolkits
+
+PACS is one of the snATAC-seq toolkits developed by the Kim lab. Other
+toolkits include:
+
+- [**PICsnATAC**](https://github.com/Zhen-Miao/PICsnATAC)
+
+Miao, Z and Kim, J. **Uniform quantification of single-nucleus ATAC-seq
+data with Paired- Insertion Counting (PIC) and a model-based insertion
+rate estimator.** Nature Methods 2024
+
+## Contact
+
+For any questions regarding the package, please contact Zhen Miao
+(<zhenmiao@pennmedicine.upenn.edu>) or Junhyong Kim
+(<junhyong@sas.upenn.edu>).
+
+# Package index
+
+## All functions
+
+- [`CCT_internal_horizontal()`](https://zhen-miao.github.io/PACS/reference/CCT_internal_horizontal.md)
+  : Cauchy Combination Test accelerated
+- [`FindMarkersPACS()`](https://zhen-miao.github.io/PACS/reference/FindMarkersPACS.md)
+  : Differential test with PACS on Seurat object
+- [`compare_models()`](https://zhen-miao.github.io/PACS/reference/compare_models.md)
+  : Use gLRT to compare two models and obtain p values
+- [`compute_infor_mat_tilda()`](https://zhen-miao.github.io/PACS/reference/compute_infor_mat_tilda.md)
+  : compute_information matrix tilda
+- [`estimate_label_default()`](https://zhen-miao.github.io/PACS/reference/estimate_label_default.md)
+  : Estimate cell type label for new data
+- [`estimate_label_no_cap_rate_all_pks()`](https://zhen-miao.github.io/PACS/reference/estimate_label_no_cap_rate_all_pks.md)
+  : Estimate cell type label for new data using all peaks as input
+- [`estimate_parameters()`](https://zhen-miao.github.io/PACS/reference/estimate_parameters.md)
+  : Estimate parameters for the full model
+- [`estimate_parameters_null()`](https://zhen-miao.github.io/PACS/reference/estimate_parameters_null.md)
+  : Estimate parameters for the null model
+- [`infor_mat()`](https://zhen-miao.github.io/PACS/reference/infor_mat.md)
+  : Information matrix – original without Firth prior
+- [`irls_iter()`](https://zhen-miao.github.io/PACS/reference/irls_iter.md)
+  : Iteratively reweighted least squares function (main function)
+- [`irls_iter_nt()`](https://zhen-miao.github.io/PACS/reference/irls_iter_nt.md)
+  : Iteratively reweighted least squares function – newton methods
+- [`irls_iter_nt_null()`](https://zhen-miao.github.io/PACS/reference/irls_iter_nt_null.md)
+  : Iteratively reweighted least squares function for null – newton
+  method for the null model
+- [`irls_iter_null()`](https://zhen-miao.github.io/PACS/reference/irls_iter_null.md)
+  : Iteratively reweighted least squares function (main function) for
+  the null model
+- [`loss_firth_from_wii()`](https://zhen-miao.github.io/PACS/reference/loss_firth_from_wii.md)
+  : Compute loss function with Firth regularization from Wii matrix
+- [`loss_fun()`](https://zhen-miao.github.io/PACS/reference/loss_fun.md)
+  : Calculate Loss Function without Firth prior
+- [`loss_fun_star()`](https://zhen-miao.github.io/PACS/reference/loss_fun_star.md)
+  : Regularized log loss function
+- [`loss_grad_pen()`](https://zhen-miao.github.io/PACS/reference/loss_grad_pen.md)
+  : Gradient of penalized loss ( Invariant prior)
+- [`loss_gradient()`](https://zhen-miao.github.io/PACS/reference/loss_gradient.md)
+  : Gradient of loss function without Firth prior
+- [`our_method_no_firth()`](https://zhen-miao.github.io/PACS/reference/our_method_no_firth.md)
+  : Internal evaluation use only – PACS Without Firth
+- [`pacs_test_cumu()`](https://zhen-miao.github.io/PACS/reference/pacs_test_cumu.md)
+  : likelihood ratio test with PACS – cumulative logit
+- [`pacs_test_logit()`](https://zhen-miao.github.io/PACS/reference/pacs_test_logit.md)
+  : Profile likelihood ratio test with PACS
+- [`pacs_test_sparse()`](https://zhen-miao.github.io/PACS/reference/pacs_test_sparse.md)
+  : Profile likelihood ratio test with PACS
+
+# Articles
+
+### All vignettes
+
+- [Vignette 1. Cell type annotation with
+  PACS](https://zhen-miao.github.io/PACS/articles/Vignette_1_PACS_cell_type_annotation.md):
+- [Vignette 2. Differentially Accessible Region (DAR) Identification
+  with
+  PACS](https://zhen-miao.github.io/PACS/articles/Vignette_2_PACS_differential_test.md):
