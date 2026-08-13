@@ -401,6 +401,96 @@ points near `p = 0.5`. The threshold is conservative; tightening it (say
 fits. We can expose this as an argument once usage patterns clarify
 whether tuning is needed.
 
+### 9.1 Saddlepoint adjustment for scalar tests (df = 1)
+
+The first-order χ² approximation has O(n⁻¹) error in the tail
+probabilities. For genome-wide multiple testing at stringent α (e.g.
+5 × 10⁻⁶), this error can push the actual rejection rate above the
+nominal level. The Barndorff-Nielsen r* statistic achieves O(n⁻³/²)
+tail accuracy by combining the signed root of the LRT with a Wald-type
+correction.
+
+**Setup.** Partition θ = (λ, ψ) where ψ is the scalar test parameter
+(the single β component held to zero under the null) and λ collects
+the nuisance parameters (ã₁, ..., ã_T, remaining β's). The penalised
+null MLE θ̂*_null satisfies ∂ℓ*/∂λ = 0 while ψ = 0; the penalised
+full MLE θ̂*_full satisfies ∂ℓ*/∂θ = 0.
+
+**Signed root.** Define
+
+```
+r = sign(ψ̂*_full) · √w,    w = 2[ℓ*(θ̂*_full) − ℓ*(θ̂*_null)].
+```
+
+Under H₀, r ~ N(0, 1) to first order; `pchisq(w, 1)` is the two-sided
+version.
+
+**Profile score at the null.** Because ∂ℓ*/∂λ = 0 at θ̂*_null, the
+profile score for ψ simplifies:
+
+```
+S*_{ψ·λ}(θ̂*_null)  =  ∂ℓ*/∂ψ |_{θ̂*_null}.
+```
+
+This is the total penalised score (likelihood score + Firth penalty
+score) for the test parameter at the constrained null MLE.
+
+**Profile information at the full MLE.** Using the Fisher information
+I(θ) as proxy for the negative Hessian (consistent with Fisher-scoring
+IRLS), the profile observed information is the Schur complement:
+
+```
+J*_{ψψ·λ}  =  I_{ψψ} − I_{ψλ} I_{λλ}⁻¹ I_{λψ},
+```
+
+evaluated at θ̂*_full.
+
+**r* formula.**
+
+```
+u = S*_{ψ·λ}(θ̂*_null) / √J*_{ψψ·λ}(θ̂*_full),
+r* = r + (1/r) · log(u / r).
+```
+
+The two-sided p-value is `2 Φ(−|r*|)`.
+
+**Fallback conditions.** The formula is undefined when:
+- df > 1 (multivariate test; Skovgaard's 2001 extension would be needed),
+- |r| < ε (test statistic ≈ 0; p ≈ 1 regardless),
+- u/r ≤ 0 (sign mismatch; indicates numerical instability),
+- J*_{ψψ·λ} ≤ 0 (non-positive profile information).
+
+In all cases `compare_models_cumu` falls back to `pchisq(w, df)`.
+
+**Empirical finding: saddlepoint does not improve on Firth-corrected
+chi-squared.** Simulation at `n = 300` and `n = 80` (T = 2, df = 1)
+shows the Firth-corrected LRT chi-squared is already very well
+calibrated (KS p > 0.4 at n = 300, > 0.9 at n = 80). The r*
+correction consistently *degrades* calibration (KS p < 0.01) because
+Firth's penalty already absorbs the O(n⁻¹) bias that r* targets.
+
+The root cause is that Firth regularization and the Barndorff-Nielsen
+r* are **alternative approaches to the same asymptotic deficiency**.
+Firth acts on the estimator (penalising the likelihood to reduce MLE
+bias), r* acts on the reference distribution (correcting the
+chi-squared tail). Both target the O(n⁻¹) error term, and combining
+them produces over-correction: the penalised LRT statistic from `ℓ*`
+already has Bartlett-type calibration improvements baked in, so the
+additional r* adjustment double-counts the correction.
+
+Additionally, the standard r* formula assumes score and information
+from the same likelihood; our implementation must use the *unpenalized*
+score at the Firth null MLE (where `∂ℓ*/∂λ = 0` but `∂ℓ/∂λ ≠ 0`),
+requiring the full profile score formula rather than the simplified
+`S_{ψ·λ} = S_ψ`. This adds computational cost without calibration
+benefit.
+
+The `pvalue_method = "saddlepoint"` option is retained for research
+comparisons and for potential use in non-Firth settings, but
+`"chisq"` remains the recommended default. See Kenne Pagui, Salvan &
+Sartori (2017) for a comparison of bias-reduction approaches in
+standard logistic regression.
+
 ## 10. Implementation plan
 
 Phased rollout to keep the existing pipeline working:
