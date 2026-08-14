@@ -102,6 +102,8 @@ full_jacobian <- function(atilde, p_beta) {
 ## Returns a list with n×T matrices p, u, Delta, D and their stable log/ratio
 ## counterparts. Delta is evaluated without subtracting two rounded logistic
 ## probabilities.
+#' @importFrom stats plogis
+#' @noRd
 cumu_link <- function(alpha, beta, X) {
   n <- nrow(X)
   T <- length(alpha)
@@ -161,8 +163,8 @@ cumu_link <- function(alpha, beta, X) {
 
 ## Per-cell log Pr(M_i | x_i, q_i) under Option B (note §3.1). Drops the
 ## constant log q_i term for m_i >= 1 (irrelevant to optimisation).
-loss_fun_cumu <- function(theta, X, M, q, T) {
-  validate_cumu_response(M, T)
+loss_fun_cumu <- function(theta, X, M, q, T, validate = TRUE) {
+  if (validate) validate_cumu_response(M, T)
   alpha <- alpha_from_atilde(theta[1:T])
   beta <- if (length(theta) > T) theta[(T + 1):length(theta)] else numeric(0)
   L <- cumu_link(alpha, beta, X)
@@ -188,11 +190,12 @@ loss_fun_cumu <- function(theta, X, M, q, T) {
 ## Returns a length-(T + p_beta) vector: ∂ℓ / ∂(α, β) evaluated at
 ## (alpha, beta). Used internally; loss_gradient_cumu wraps with the
 ## reparameterisation.
-score_alpha_beta <- function(alpha, beta, X, M, q, link = NULL) {
+score_alpha_beta <- function(alpha, beta, X, M, q, link = NULL,
+                             validate = TRUE) {
   T <- length(alpha)
   p_beta <- length(beta)
   if (is.null(link)) link <- cumu_link(alpha, beta, X)
-  validate_cumu_response(M, T)
+  if (validate) validate_cumu_response(M, T)
   u <- link$u
 
   s_alpha <- numeric(T)
@@ -246,11 +249,11 @@ score_alpha_beta <- function(alpha, beta, X, M, q, link = NULL) {
 
 
 ## Score in θ = (ã, β): apply the Jacobian transform score_θ = J̃^T · score_(α,β).
-loss_gradient_cumu <- function(theta, X, M, q, T) {
+loss_gradient_cumu <- function(theta, X, M, q, T, validate = TRUE) {
   atilde <- theta[1:T]
   alpha <- alpha_from_atilde(atilde)
   beta <- if (length(theta) > T) theta[(T + 1):length(theta)] else numeric(0)
-  s_ab <- score_alpha_beta(alpha, beta, X, M, q)
+  s_ab <- score_alpha_beta(alpha, beta, X, M, q, validate = validate)
   J <- full_jacobian(atilde, length(beta))
   as.numeric(crossprod(J, s_ab))
 }
@@ -379,54 +382,91 @@ warm_start_theta <- function(M, q, T, p_beta, eps = 1e-3) {
 
 ## --- Fisher scoring (unpenalized MLE on ã, β) ----------------------------
 
-## Mirrors irls_iter() in R/param-estimate_logit_get_p_by_t_June.R: loops
-## over scoring steps using I^{-1} score_lik. Step-halving ensures that every
-## accepted update has a finite, non-decreasing log-likelihood.
-## Convergence semantics: 1 = converged, 2 = singular/non-finite system,
-## 3 = max-iter, 4 = no acceptable step.
-irls_iter_cumu <- function(M_vec, X, theta_estimated, q_vec, T,
-                           tolerance = .Machine$double.eps^0.5,
-                           stop_criteria = 1e-6, max_iter = 25L,
-                           max_halving = 25L) {
+## Shared engine for full and constrained-null fits. Step-halving ensures that
+## every accepted update has a finite, non-decreasing log-likelihood. A fit is
+## converged only when both the accepted step and the free-parameter score are
+## small, so a heavily halved but non-stationary step cannot report success.
+## Status: 1 = converged, 2 = singular/non-finite scoring system,
+## 3 = max-iter, 4 = no acceptable step, 5 = non-finite starting likelihood.
+irls_fit_cumu <- function(M_vec, X, theta_estimated, q_vec, T,
+                          hold_zero = integer(0),
+                          tolerance = .Machine$double.eps^0.5,
+                          stop_criteria = 1e-6,
+                          score_tolerance = 1e-4,
+                          max_iter = 25L, max_halving = 25L) {
   validate_cumu_response(M_vec, T)
-  indi <- 1
-  n_iter <- 1L
-  conv_stat <- 1L
-  current_ll <- loss_fun_cumu(theta_estimated, X, M_vec, q_vec, T)
-  if (!is.finite(current_ll)) {
-    return(c(as.vector(theta_estimated), 4L))
+  if (length(max_iter) != 1L || max_iter < 1L || max_iter != as.integer(max_iter)) {
+    stop("max_iter must be a positive integer.", call. = FALSE)
   }
-  while (indi >= stop_criteria && n_iter <= max_iter) {
+  if (length(max_halving) != 1L || max_halving < 0L ||
+      max_halving != as.integer(max_halving)) {
+    stop("max_halving must be a non-negative integer.", call. = FALSE)
+  }
+  if (!is.finite(stop_criteria) || stop_criteria <= 0 ||
+      !is.finite(score_tolerance) || score_tolerance < 0) {
+    stop("convergence tolerances must be finite and non-negative.", call. = FALSE)
+  }
+
+  hold_zero <- unique(as.integer(hold_zero))
+  if (any(hold_zero < 1L | hold_zero > length(theta_estimated))) {
+    stop("hold_zero contains an invalid parameter index.", call. = FALSE)
+  }
+  free <- setdiff(seq_along(theta_estimated), hold_zero)
+  if (length(free) == 0L) {
+    stop("at least one parameter must remain free.", call. = FALSE)
+  }
+  theta_estimated[hold_zero] <- 0
+
+  current_ll <- loss_fun_cumu(
+    theta_estimated, X, M_vec, q_vec, T, validate = FALSE
+  )
+  if (!is.finite(current_ll)) {
+    return(c(as.vector(theta_estimated), 5L))
+  }
+
+  conv_stat <- 3L
+  n_iter <- 1L
+  while (n_iter <= max_iter) {
     inf_mat <- infor_mat_cumu(theta_estimated, X, q_vec, T)
     if (any(!is.finite(inf_mat))) {
       conv_stat <- 2L
       break
     }
-    ld <- determinant.matrix(inf_mat, logarithm = TRUE)
+    inf_free <- inf_mat[free, free, drop = FALSE]
+    ld <- determinant.matrix(inf_free, logarithm = TRUE)
     if (ld$sign[1] <= 0 || as.numeric(ld$modulus) < log(tolerance)) {
       conv_stat <- 2L
       break
     }
-    s_lik <- loss_gradient_cumu(theta_estimated, X, M_vec, q_vec, T)
-    if (any(!is.finite(s_lik))) {
+
+    score <- loss_gradient_cumu(
+      theta_estimated, X, M_vec, q_vec, T, validate = FALSE
+    )
+    if (any(!is.finite(score))) {
       conv_stat <- 2L
       break
     }
-    inf_inv <- try(solve(inf_mat), silent = TRUE)
+    inf_inv <- try(solve(inf_free), silent = TRUE)
     if (is_error_cumu(inf_inv) || any(!is.finite(inf_inv))) {
       conv_stat <- 2L
       break
     }
-    update <- as.numeric(inf_inv %*% s_lik)
-    if (any(!is.finite(update))) {
+    update_free <- as.numeric(inf_inv %*% score[free])
+    if (any(!is.finite(update_free))) {
       conv_stat <- 2L
       break
     }
+    update <- numeric(length(theta_estimated))
+    update[free] <- update_free
+
     step_scale <- 1
     accepted <- FALSE
-    for (halving in 0:max_halving) {
+    for (halving in seq.int(0L, as.integer(max_halving))) {
       theta_update <- theta_estimated + step_scale * update
-      proposed_ll <- loss_fun_cumu(theta_update, X, M_vec, q_vec, T)
+      theta_update[hold_zero] <- 0
+      proposed_ll <- loss_fun_cumu(
+        theta_update, X, M_vec, q_vec, T, validate = FALSE
+      )
       if (is.finite(proposed_ll) && proposed_ll >= current_ll - 1e-10) {
         accepted <- TRUE
         break
@@ -437,13 +477,40 @@ irls_iter_cumu <- function(M_vec, X, theta_estimated, q_vec, T,
       conv_stat <- 4L
       break
     }
-    indi <- sum((theta_update - theta_estimated)^2)
+
+    step_size <- sum((theta_update - theta_estimated)^2)
     theta_estimated <- theta_update
     current_ll <- proposed_ll
+    updated_score <- loss_gradient_cumu(
+      theta_estimated, X, M_vec, q_vec, T, validate = FALSE
+    )
+    if (any(!is.finite(updated_score))) {
+      conv_stat <- 2L
+      break
+    }
+    score_norm <- max(abs(updated_score[free]))
+    if (step_size < stop_criteria && score_norm <= score_tolerance) {
+      conv_stat <- 1L
+      break
+    }
     n_iter <- n_iter + 1L
   }
-  if (conv_stat == 1L && indi >= stop_criteria) conv_stat <- 3L
+
   c(as.vector(theta_estimated), conv_stat)
+}
+
+
+irls_iter_cumu <- function(M_vec, X, theta_estimated, q_vec, T,
+                           tolerance = .Machine$double.eps^0.5,
+                           stop_criteria = 1e-6,
+                           score_tolerance = 1e-4,
+                           max_iter = 25L, max_halving = 25L) {
+  irls_fit_cumu(
+    M_vec = M_vec, X = X, theta_estimated = theta_estimated,
+    q_vec = q_vec, T = T, tolerance = tolerance,
+    stop_criteria = stop_criteria, score_tolerance = score_tolerance,
+    max_iter = max_iter, max_halving = max_halving
+  )
 }
 
 
@@ -451,69 +518,16 @@ irls_iter_cumu <- function(M_vec, X, theta_estimated, q_vec, T,
 irls_iter_cumu_null <- function(M_vec, X, theta_estimated, hold_zero,
                                 q_vec, T,
                                 tolerance = .Machine$double.eps^0.5,
-                                stop_criteria = 1e-6, max_iter = 25L,
-                                max_halving = 25L) {
-  validate_cumu_response(M_vec, T)
-  indi <- 1
-  n_iter <- 1L
-  conv_stat <- 1L
-  poi <- setdiff(seq_along(theta_estimated), hold_zero)
-  current_ll <- loss_fun_cumu(theta_estimated, X, M_vec, q_vec, T)
-  if (!is.finite(current_ll)) {
-    return(c(as.vector(theta_estimated), 4L))
-  }
-  while (indi >= stop_criteria && n_iter <= max_iter) {
-    inf_mat <- infor_mat_cumu(theta_estimated, X, q_vec, T)
-    if (any(!is.finite(inf_mat))) {
-      conv_stat <- 2L
-      break
-    }
-    ld <- determinant.matrix(inf_mat[poi, poi, drop = FALSE], logarithm = TRUE)
-    if (ld$sign[1] <= 0 || as.numeric(ld$modulus) < log(tolerance)) {
-      conv_stat <- 2L
-      break
-    }
-    s_lik <- loss_gradient_cumu(theta_estimated, X, M_vec, q_vec, T)
-    if (any(!is.finite(s_lik))) {
-      conv_stat <- 2L
-      break
-    }
-    inf_inv <- try(solve(inf_mat[poi, poi, drop = FALSE]), silent = TRUE)
-    if (is_error_cumu(inf_inv) || any(!is.finite(inf_inv))) {
-      conv_stat <- 2L
-      break
-    }
-    update_poi <- as.numeric(inf_inv %*% s_lik[poi])
-    if (any(!is.finite(update_poi))) {
-      conv_stat <- 2L
-      break
-    }
-    update_full <- numeric(length(theta_estimated))
-    update_full[poi] <- update_poi
-    update_full[hold_zero] <- 0
-    step_scale <- 1
-    accepted <- FALSE
-    for (halving in 0:max_halving) {
-      theta_update <- theta_estimated + step_scale * update_full
-      theta_update[hold_zero] <- 0
-      proposed_ll <- loss_fun_cumu(theta_update, X, M_vec, q_vec, T)
-      if (is.finite(proposed_ll) && proposed_ll >= current_ll - 1e-10) {
-        accepted <- TRUE
-        break
-      }
-      step_scale <- step_scale / 2
-    }
-    if (!accepted) {
-      conv_stat <- 4L
-      break
-    }
-    indi <- sum((theta_update - theta_estimated)^2)
-    theta_estimated <- theta_update
-    current_ll <- proposed_ll
-    n_iter <- n_iter + 1L
-  }
-  if (conv_stat == 1L && indi >= stop_criteria) conv_stat <- 3L
-  c(as.vector(theta_estimated), conv_stat)
+                                stop_criteria = 1e-6,
+                                score_tolerance = 1e-4,
+                                max_iter = 25L, max_halving = 25L) {
+  irls_fit_cumu(
+    M_vec = M_vec, X = X, theta_estimated = theta_estimated,
+    q_vec = q_vec, T = T, hold_zero = hold_zero,
+    tolerance = tolerance, stop_criteria = stop_criteria,
+    score_tolerance = score_tolerance, max_iter = max_iter,
+    max_halving = max_halving
+  )
 }
 
 

@@ -28,6 +28,7 @@ Suggests:
     Seurat,
     SeuratObject,
     future,
+    ordinal,
     PICsnATAC,
     rlang
 Config/testthat/edition: 3

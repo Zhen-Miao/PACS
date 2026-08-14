@@ -10,7 +10,7 @@ pacs_test_sparse(
   formula_null,
   pic_matrix,
   n_peaks_per_round = NULL,
-  T_proportion_cutoff = 0.2,
+  T_proportion_cutoff = 0.25,
   cap_rates,
   par_initial_null = NULL,
   par_initial_full = NULL,
@@ -36,7 +36,7 @@ matrix in R.}
 
 \item{T_proportion_cutoff}{To determine the maximum value of T, we set
 a criteria based on the proportion of reads that are >= T. This parameter
-set this proportion. Default = 0.2}
+set this proportion. Default = 0.25}
 
 \item{cap_rates}{A vector of capturing probability for each cell}
 

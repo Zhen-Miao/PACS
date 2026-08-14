@@ -78,3 +78,44 @@ test_that("unpenalized Fisher-scoring update has binary parity at T=1", {
     tolerance = 1e-10
   )
 })
+
+
+test_that("unpenalized T=1 optimizer converges to the binary MLE", {
+  fx <- make_cumu_fixture(n = 300L, p = 2L, T = 1L,
+                          alpha = 0.4, beta = c(0.5, -0.4), seed = 51L)
+  M <- PACS:::simulate_cumu_pacs(
+    X = fx$X, alpha = fx$alpha, beta = fx$beta,
+    q = fx$q, capture = "B", seed = 52L
+  )
+  theta_init <- rep.int(0.05, 1L + ncol(fx$X))
+  X_bin <- cbind(intercept = 1, fx$X)
+
+  fit_cumu <- PACS:::irls_iter_cumu(
+    M_vec = M, X = fx$X, theta_estimated = theta_init,
+    q_vec = fx$q, T = 1L
+  )
+  expect_equal(fit_cumu[length(fit_cumu)], 1L)
+  theta_cumu <- fit_cumu[-length(fit_cumu)]
+
+  fit_binary_mle <- optim(
+    par = theta_init,
+    fn = function(theta) {
+      p_bg <- plogis(as.numeric(X_bin %*% theta))
+      -loss_fun(p_bg = p_bg, q_vec = fx$q, y_vec = M)
+    },
+    gr = function(theta) {
+      p_bg <- plogis(as.numeric(X_bin %*% theta))
+      -loss_gradient(X_bin, p_bg, fx$q, M)
+    },
+    method = "BFGS",
+    control = list(reltol = 1e-12, maxit = 1000L)
+  )
+  expect_equal(fit_binary_mle$convergence, 0L)
+  expect_equal(theta_cumu, fit_binary_mle$par, tolerance = 1e-4)
+  expect_lte(
+    max(abs(PACS:::loss_gradient_cumu(
+      theta_cumu, fx$X, M, fx$q, T = 1L
+    ))),
+    1e-4
+  )
+})

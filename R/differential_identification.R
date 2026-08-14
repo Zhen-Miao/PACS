@@ -34,6 +34,17 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
   if (ncol(theta_estimated_null) != n_features) {
     stop("full and null theta matrices must have the same number of features")
   }
+  expected_rows <- T + ncol(x_full)
+  if (nrow(theta_estimated_full) != expected_rows ||
+      nrow(theta_estimated_null) != expected_rows) {
+    stop(sprintf(
+      "theta matrices must each have T + ncol(x_full) = %d rows",
+      expected_rows
+    ))
+  }
+  if (nrow(c_by_r) != nrow(x_full) || length(q_vec) != nrow(x_full)) {
+    stop("x_full, c_by_r, and q_vec must describe the same cells")
+  }
   if (is.null(conv_full)) conv_full <- rep.int(1L, n_features)
   if (is.null(conv_null)) conv_null <- rep.int(1L, n_features)
   if (length(conv_full) != n_features || length(conv_null) != n_features) {
@@ -58,9 +69,10 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
     boundary <- near_boundary(theta_estimated_full) |
       near_boundary(theta_estimated_null)
   }
+  boundary_eligible <- boundary & converged
 
   per_peak <- function(j) {
-    if (!converged[j] || boundary[j]) {
+    if (!converged[j] || boundary_eligible[j]) {
       return(list(p = NA_real_, negative = FALSE))
     }
     M_j <- as.numeric(c_by_r[, j])
@@ -95,13 +107,13 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
       sum(!converged)
     ), call. = FALSE)
   }
-  if (any(boundary)) {
+  if (any(boundary_eligible)) {
     warning(sprintf(
       paste0(
         "%d peak(s) had a null or full fit on the order-constraint ",
         "boundary (threshold gap < %g); p-values were set to NA."
       ),
-      sum(boundary), boundary_eps
+      sum(boundary_eligible), boundary_eps
     ), call. = FALSE)
   }
   if (any(materially_negative)) {

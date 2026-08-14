@@ -328,10 +328,24 @@ There is also a concrete parameterization problem. Let `G = ∂(α,β) /
 ```
 
 The last term is an additional threshold-gap penalty, not an optimization
-constant. Removing the penalty makes the current MLE objective invariant to
-the order reparameterization. Any future bias-reduced estimator must state
-its target parameterization and derive the appropriate adjusted scores
-before it is exposed through the API.
+constant. That defect is separable from the bias-reduction question: computing
+the determinant from `I_(α,β)` would remove the extra term in one line. A
+Jeffreys penalty in `(α, β)` was **not evaluated and rejected** as an estimator
+in this work; it was deliberately not substituted because it still would not
+establish Firth mean-bias reduction for the curved capture-adjusted model.
+Removing the penalty makes the current MLE objective invariant to the order
+reparameterization. Any future bias-reduced estimator must state its target
+parameterization and derive the appropriate adjusted scores before it is
+exposed through the API.
+
+The same limitation applies to the legacy binary capture-adjusted path:
+`loss_grad_pen()` is historically described as Firth correction, but its
+Jeffreys-type adjustment has not been shown here to remove first-order bias
+when `Pr(M_i = 1) = q_i sigma(eta_i)`. It remains unchanged for backward
+compatibility, not as a validated reference implementation of Firth bias
+reduction. The exact Option B path therefore uses the unpenalized likelihood
+for both estimation and inference rather than treating the binary penalty as
+settled statistical ground truth.
 
 ## 7. Order-constraint / identifiability
 
@@ -414,6 +428,17 @@ are rounded to zero; a material negative value indicates that the fitted
 full model failed to attain the nested null likelihood and is not converted
 silently to `p = 1`.
 
+**Sparse-peak behavior.** The unpenalized MLE can fail to exist or its
+information can become singular when a peak has very few nonzero observations.
+In review simulations the exact-path `NA` rate was 0% for dense peaks, 3% at
+`alpha = (-2.5, -4)` with `n = 300`, 38% at `alpha = (-3.5, -5)` with
+`n = 300`, and 46% at `alpha = (-2.5, -4)` with `n = 100`. These figures
+describe those simulation regimes rather than a universal sparsity curve.
+Withholding inference is conservative for the affected peak because a failed
+fit cannot become a false positive, but the increasing `NA` rate reduces
+power by removing peaks from analysis. Simulated type-I error among returned
+p-values was not inflated in the reviewed regimes.
+
 **Boundary caveat.** The χ² approximation assumes the MLE is interior to
 the feasible region. When the order constraint `α_1 ≥ ... ≥ α_T` is active
 at the optimum, the reference distribution generally involves a
@@ -425,10 +450,11 @@ fits, warns, and returns `NA` rather than an ordinary chi-square p-value.
 any `exp(ã_t) < 1e−3` for `t ≥ 2`. At that threshold,
 `α_{t−1} − α_t < 0.001`, which is effectively zero on the logit scale —
 adjacent cumulative probabilities differ by less than ~0.025 percentage
-points near `p = 0.5`. The threshold is conservative; tightening it (say
-`1e−4`) would suppress fewer peaks but risk false negatives on borderline
-fits. It is an internal argument to `compare_models_cumu` and is not
-currently part of the public API.
+points near `p = 0.5`. This is a numerical guard, not a test of whether a gap
+is statistically distinguishable from zero; that would require its sampling
+uncertainty. Tightening it (say `1e−4`) flags fewer numerically collapsed
+gaps. It is an internal argument to `compare_models_cumu` and is not currently
+part of the public API.
 
 ## 10. Implementation status and remaining work
 
@@ -437,7 +463,8 @@ currently part of the public API.
 - `max_T` is a top-code in the public exact API: category `T` means `T` or
   more. Internal likelihood helpers reject responses outside `0:T` clearly.
 - Logistic category differences are computed in log space and scoring uses
-  stable ratios. Fisher-scoring updates use step-halving.
+  stable ratios. Fisher-scoring updates use step-halving, and convergence
+  requires both a small step and a small score on the free parameters.
 - The default remains `method = "stacked"` for backward compatibility.
 - Option A and a statistically derived mean-bias-reduction method remain
   future work. Option A must use the expected-information construction in

@@ -45,23 +45,34 @@ need to specify unless there are reasons to do so. Default = NULL}
 
 \item{n_cores}{number of cores for multi-core computation}
 
-\item{method}{One of \code{"stacked"} (default, back-compat) or
-\code{"exact"}. \code{"stacked"} uses the original stack-and-treat-as-binary
-approximation. \code{"exact"} uses the proper cumulative-logit likelihood
-with capture-rate correction (Option B in
-\code{notes/cumulative_logit_math.md}) and an unpenalized maximum-likelihood
-fit. Exact-path p-values are ordinary likelihood-ratio tests and are
-\code{NA} for non-converged or boundary fits.}
+\item{method}{One of \code{"stacked"} (default, back-compat) or \code{"exact"}.
+\code{"stacked"} uses the original stack-and-treat-as-binary approximation.
+\code{"exact"} uses the proper cumulative-logit likelihood with capture-rate
+correction (Option B in \code{notes/cumulative_logit_math.md}) and an
+unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+likelihood-ratio tests and are \code{NA} for non-converged or boundary fits.}
 }
 \value{
 A list of two elements. \code{pacs_converged} has length
 \code{2 * n_peaks}, with null-fit statuses followed by full-fit statuses. For
 the exact path, status 1 means converged, 2 means a singular or non-finite
-scoring system, 3 means the iteration limit was reached, and 4 means
-step-halving found no acceptable update. \code{pacs_p_val} contains one p-value
-per peak; exact-path inference is \code{NA} unless both statuses are 1 and both
-fits are interior.
+scoring system, 3 means the iteration limit was reached, 4 means
+step-halving found no acceptable update, and 5 means the supplied starting
+value had a non-finite log-likelihood. \code{pacs_p_val} contains one p-value per
+peak; exact-path inference is \code{NA} unless both statuses are 1 and both fits
+are interior.
 }
 \description{
 likelihood ratio test with PACS -- cumulative logit
+}
+\details{
+The unpenalized exact MLE can fail to exist or have singular
+information for very sparse peaks. In review simulations, the exact-path
+\code{NA} rate rose from 0\% for dense peaks to 3\% for moderately sparse peaks
+(\code{n = 300}, \code{alpha = c(-2.5, -4)}), 38\% for still sparser peaks
+(\code{n = 300}, \code{alpha = c(-3.5, -5)}), and 46\% with fewer cells
+(\code{n = 100}, \code{alpha = c(-2.5, -4)}). These rates are scenario-specific,
+not general guarantees. Withholding a p-value is a conservative failure
+policy for the affected peak—it avoids turning a failed fit into a false
+positive—but the resulting loss of analyzable peaks reduces power.
 }

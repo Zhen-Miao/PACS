@@ -3,7 +3,7 @@
 
 #' likelihood ratio test with PACS -- cumulative logit
 #'
-#' @importFrom stats model.matrix plogis runif
+#' @importFrom stats model.matrix
 #' @param covariate_meta.data A data.frame with columns representing the
 #'   covariates and rows representing cells
 #' @param formula_full A formula object representing the full model. For
@@ -28,14 +28,24 @@
 #'   correction (Option B in `notes/cumulative_logit_math.md`) and an
 #'   unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
 #'   likelihood-ratio tests and are `NA` for non-converged or boundary fits.
+#' @details The unpenalized exact MLE can fail to exist or have singular
+#'   information for very sparse peaks. In review simulations, the exact-path
+#'   `NA` rate rose from 0% for dense peaks to 3% for moderately sparse peaks
+#'   (`n = 300`, `alpha = c(-2.5, -4)`), 38% for still sparser peaks
+#'   (`n = 300`, `alpha = c(-3.5, -5)`), and 46% with fewer cells
+#'   (`n = 100`, `alpha = c(-2.5, -4)`). These rates are scenario-specific,
+#'   not general guarantees. Withholding a p-value is a conservative failure
+#'   policy for the affected peak—it avoids turning a failed fit into a false
+#'   positive—but the resulting loss of analyzable peaks reduces power.
 #'
 #' @return A list of two elements. `pacs_converged` has length
 #'   `2 * n_peaks`, with null-fit statuses followed by full-fit statuses. For
 #'   the exact path, status 1 means converged, 2 means a singular or non-finite
-#'   scoring system, 3 means the iteration limit was reached, and 4 means
-#'   step-halving found no acceptable update. `pacs_p_val` contains one p-value
-#'   per peak; exact-path inference is `NA` unless both statuses are 1 and both
-#'   fits are interior.
+#'   scoring system, 3 means the iteration limit was reached, 4 means
+#'   step-halving found no acceptable update, and 5 means the supplied starting
+#'   value had a non-finite log-likelihood. `pacs_p_val` contains one p-value per
+#'   peak; exact-path inference is `NA` unless both statuses are 1 and both fits
+#'   are interior.
 #' @export
 #'
 pacs_test_cumu <- function(covariate_meta.data, formula_full,
