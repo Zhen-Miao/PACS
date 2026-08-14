@@ -13,7 +13,8 @@ pacs_test_cumu(
   cap_rates,
   par_initial_null = NULL,
   par_initial_full = NULL,
-  n_cores = 1
+  n_cores = 1,
+  method = c("stacked", "exact")
 )
 }
 \arguments{
@@ -28,7 +29,9 @@ example, ~ batch}
 
 \item{pic_matrix}{The input region-by-cell PIC matrix}
 
-\item{max_T}{The maximum value of accessibility considered, default = 2}
+\item{max_T}{The maximum accessibility category considered, default = 2.
+For \code{method = "exact"}, observed counts greater than \code{max_T} are
+top-coded, so the final category means \code{max_T} or more.}
 
 \item{cap_rates}{A vector of capturing probability for each cell}
 
@@ -41,13 +44,23 @@ null model, we do not
 need to specify unless there are reasons to do so. Default = NULL}
 
 \item{n_cores}{number of cores for multi-core computation}
+
+\item{method}{One of \code{"stacked"} (default, back-compat) or
+\code{"exact"}. \code{"stacked"} uses the original stack-and-treat-as-binary
+approximation. \code{"exact"} uses the proper cumulative-logit likelihood
+with capture-rate correction (Option B in
+\code{notes/cumulative_logit_math.md}) and an unpenalized maximum-likelihood
+fit. Exact-path p-values are ordinary likelihood-ratio tests and are
+\code{NA} for non-converged or boundary fits.}
 }
 \value{
-A list of two elements, pacs_converged is a vector
-of length 2*n_peaks representing the convergence status
-of the peak in the null and full model
-and pacs_p_val is a vector of length n_peaks representing the p values for
-each peak.
+A list of two elements. \code{pacs_converged} has length
+\code{2 * n_peaks}, with null-fit statuses followed by full-fit statuses. For
+the exact path, status 1 means converged, 2 means a singular or non-finite
+scoring system, 3 means the iteration limit was reached, and 4 means
+step-halving found no acceptable update. \code{pacs_p_val} contains one p-value
+per peak; exact-path inference is \code{NA} unless both statuses are 1 and both
+fits are interior.
 }
 \description{
 likelihood ratio test with PACS -- cumulative logit
