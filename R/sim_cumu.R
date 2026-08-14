@@ -18,6 +18,8 @@
 ##   capture: "B" only (Option A is deferred per the math note's plan).
 ##
 ## Returns: integer vector of length n.
+#' @importFrom stats runif
+#' @noRd
 simulate_cumu_pacs <- function(X, alpha, beta, q, capture = "B", seed = NULL) {
   if (capture != "B") {
     stop("Only capture = 'B' is implemented; Option A (thinning) is deferred.")

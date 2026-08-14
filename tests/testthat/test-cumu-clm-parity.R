@@ -2,14 +2,10 @@
 ## standard proportional-odds logistic regression. Validate against
 ## ordinal::clm() which gives the unpenalized MLE.
 ##
-## Two regimes:
-##   - Large n (n=2000): Firth correction is negligible, so our Firth-penalized
-##     estimates should nearly match clm().
-##   - Small n (n=80): Firth correction is non-negligible, so estimates differ,
-##     but our *unpenalized* log-likelihood evaluated at the clm() MLE should
-##     match clm()'s logLik exactly.
+## Both implementations target the unpenalized MLE, so their likelihoods,
+## scores, and fitted coefficients should agree.
 
-test_that("at q=1 large n, Firth estimates match clm() closely", {
+test_that("at q=1 large-n MLE estimates match clm() closely", {
   skip_on_cran()
   skip_if_not_installed("ordinal")
 
@@ -26,7 +22,7 @@ test_that("at q=1 large n, Firth estimates match clm() closely", {
   M <- PACS:::simulate_cumu_pacs(X = X, alpha = alpha, beta = beta,
                                  q = q, capture = "B", seed = 100L)
 
-  ## --- Our exact path (Firth-penalized IRLS) ---
+  ## --- Our exact path (unpenalized Fisher scoring) ---
   theta_init <- PACS:::warm_start_theta(M = M, q = q, T = T, p_beta = p)
   res <- PACS:::irls_iter_cumu(M_vec = M, X = X, theta_estimated = theta_init,
                                q_vec = q, T = T)
@@ -45,7 +41,8 @@ test_that("at q=1 large n, Firth estimates match clm() closely", {
   alpha_clm <- -as.numeric(fit_clm$alpha)
   beta_clm <- as.numeric(fit_clm$beta)
 
-  ## At n=2000, Firth shrinkage is O(1/n) ≈ 5e-4, so 0.05 tolerance is generous.
+  ## Both fits optimize the same likelihood in different threshold
+  ## parameterizations.
   expect_equal(alpha_hat, alpha_clm, tolerance = 0.05,
                label = "alpha vs clm at n=2000")
   expect_equal(beta_hat, beta_clm, tolerance = 0.05,
@@ -145,7 +142,7 @@ test_that("at q=1 small n, score at clm MLE is zero", {
 })
 
 
-test_that("at q=1 Firth reduces bias vs clm MLE at small n (simulation)", {
+test_that("at q=1 small-n MLE estimates agree with clm across simulations", {
   skip_on_cran()
   skip_if_not_installed("ordinal")
 
@@ -156,9 +153,9 @@ test_that("at q=1 Firth reduces bias vs clm MLE at small n (simulation)", {
   alpha <- c(0.8, -0.4)
   beta <- 0.5
 
-  beta_firth <- numeric(n_rep)
+  beta_pacs <- numeric(n_rep)
   beta_clm <- numeric(n_rep)
-  ok_firth <- logical(n_rep)
+  ok_pacs <- logical(n_rep)
   ok_clm <- logical(n_rep)
 
   for (r in seq_len(n_rep)) {
@@ -169,13 +166,13 @@ test_that("at q=1 Firth reduces bias vs clm MLE at small n (simulation)", {
     M <- PACS:::simulate_cumu_pacs(X = X, alpha = alpha, beta = beta,
                                    q = q, capture = "B", seed = 500L + r)
 
-    ## Firth (our code)
+    ## PACS unpenalized MLE
     theta_init <- PACS:::warm_start_theta(M = M, q = q, T = T, p_beta = p)
     res <- PACS:::irls_iter_cumu(M_vec = M, X = X, theta_estimated = theta_init,
                                  q_vec = q, T = T)
     if (res[length(res)] == 1L) {
-      beta_firth[r] <- res[T + 1L]
-      ok_firth[r] <- TRUE
+      beta_pacs[r] <- res[T + 1L]
+      ok_pacs[r] <- TRUE
     }
 
     ## clm (unpenalized MLE)
@@ -188,15 +185,11 @@ test_that("at q=1 Firth reduces bias vs clm MLE at small n (simulation)", {
     }
   }
 
-  both_ok <- ok_firth & ok_clm
+  both_ok <- ok_pacs & ok_clm
   expect_gt(sum(both_ok), 0.7 * n_rep)
 
-  bias_firth <- mean(beta_firth[both_ok]) - beta
-  bias_clm <- mean(beta_clm[both_ok]) - beta
-
-  message(sprintf("n=80, %d reps: bias(Firth)=%.4f, bias(clm MLE)=%.4f",
-                  sum(both_ok), bias_firth, bias_clm))
-
-  ## Firth should have smaller absolute bias than unpenalized MLE.
-  expect_lte(abs(bias_firth), abs(bias_clm) + 0.02)
+  max_diff <- max(abs(beta_pacs[both_ok] - beta_clm[both_ok]))
+  message(sprintf("n=80, %d reps: max |beta(PACS)-beta(clm)|=%.4g",
+                  sum(both_ok), max_diff))
+  expect_lt(max_diff, 1e-3)
 })

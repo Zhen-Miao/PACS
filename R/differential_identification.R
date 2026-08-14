@@ -1,11 +1,10 @@
 ### differential_identification
 
 
-## Penalised LRT under the exact cumulative-logit model (method = "exact" in
-## pacs_test_cumu). Mirrors compare_models() below but evaluates the
-## cumulative-logit penalised log-likelihood per peak via
-## loss_fun_star_cumu(); fitting routines live in R/param_estimate_cumu.R
-## and the math is in notes/cumulative_logit_math.md (§9).
+## Ordinary likelihood-ratio test under the exact cumulative-logit model
+## (method = "exact" in pacs_test_cumu). Fitting routines live in
+## R/param_estimate_cumu.R and the math is in notes/cumulative_logit_math.md
+## (§9). Inference is returned only for converged, interior fits.
 ##
 ## Args:
 ##   x_full              : n × p design matrix (alpha-free; alpha lives in theta).
@@ -16,10 +15,14 @@
 ##   T                   : number of thresholds.
 ##   df_test             : degrees of freedom = number of beta components held
 ##                         to zero under null (thresholds are shared).
+##   conv_full/conv_null : optional per-feature convergence codes. Code 1 is
+##                         the only status eligible for inference.
 ##   mc.cores            : passed to mclapply.
 compare_models_cumu <- function(x_full, theta_estimated_full,
                                 theta_estimated_null,
                                 q_vec, c_by_r, T, df_test,
+                                conv_full = NULL, conv_null = NULL,
+                                boundary_eps = 1e-3,
                                 mc.cores = 1L) {
   if ("sparseMatrix" %in% is(c_by_r)) {
     c_by_r <- as.matrix(c_by_r)
@@ -28,49 +31,96 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
   if (n_features != ncol(c_by_r)) {
     stop("theta dimension does not match c_by_r")
   }
+  if (ncol(theta_estimated_null) != n_features) {
+    stop("full and null theta matrices must have the same number of features")
+  }
+  expected_rows <- T + ncol(x_full)
+  if (nrow(theta_estimated_full) != expected_rows ||
+      nrow(theta_estimated_null) != expected_rows) {
+    stop(sprintf(
+      "theta matrices must each have T + ncol(x_full) = %d rows",
+      expected_rows
+    ))
+  }
+  if (nrow(c_by_r) != nrow(x_full) || length(q_vec) != nrow(x_full)) {
+    stop("x_full, c_by_r, and q_vec must describe the same cells")
+  }
+  if (is.null(conv_full)) conv_full <- rep.int(1L, n_features)
+  if (is.null(conv_null)) conv_null <- rep.int(1L, n_features)
+  if (length(conv_full) != n_features || length(conv_null) != n_features) {
+    stop("convergence-code vectors must have one value per feature")
+  }
+
+  finite_theta <- apply(is.finite(theta_estimated_full), 2, all) &
+    apply(is.finite(theta_estimated_null), 2, all)
+  converged <- !is.na(conv_full) & !is.na(conv_null) &
+    conv_full == 1L & conv_null == 1L & finite_theta
+
+  ## A standard chi-square reference is not justified when either fit is on
+  ## the order-constraint boundary. Flag both models and withhold the p-value.
+  boundary <- rep.int(FALSE, n_features)
+  if (T >= 2L) {
+    near_boundary <- function(theta_mat) {
+      colSums(
+        exp(theta_mat[2:T, , drop = FALSE]) < boundary_eps,
+        na.rm = TRUE
+      ) > 0L
+    }
+    boundary <- near_boundary(theta_estimated_full) |
+      near_boundary(theta_estimated_null)
+  }
+  boundary_eligible <- boundary & converged
 
   per_peak <- function(j) {
+    if (!converged[j] || boundary_eligible[j]) {
+      return(list(p = NA_real_, negative = FALSE))
+    }
     M_j <- as.numeric(c_by_r[, j])
     th_full <- theta_estimated_full[, j]
     th_null <- theta_estimated_null[, j]
-    ## Penalised log-likelihoods at the two MLEs.
-    I_full <- try(infor_mat_cumu(th_full, x_full, q_vec, T), silent = TRUE)
-    I_null <- try(infor_mat_cumu(th_null, x_full, q_vec, T), silent = TRUE)
-    if (inherits(I_full, "try-error") || inherits(I_null, "try-error")) {
-      return(NA_real_)
+    ll_full <- try(loss_fun_cumu(th_full, x_full, M_j, q_vec, T), silent = TRUE)
+    ll_null <- try(loss_fun_cumu(th_null, x_full, M_j, q_vec, T), silent = TRUE)
+    if (inherits(ll_full, "try-error") || inherits(ll_null, "try-error") ||
+        !is.finite(ll_full) || !is.finite(ll_null)) {
+      return(list(p = NA_real_, negative = FALSE))
     }
-    ll_full <- loss_fun_star_cumu(th_full, x_full, M_j, q_vec, T,
-                                  inf_mat = I_full)
-    ll_null <- loss_fun_star_cumu(th_null, x_full, M_j, q_vec, T,
-                                  inf_mat = I_null)
-    if (!is.finite(ll_full) || !is.finite(ll_null)) return(NA_real_)
     stat <- 2 * (ll_full - ll_null)
-    if (stat < 0) stat <- 0
-    pchisq(stat, df = df_test, lower.tail = FALSE)
+    numerical_tol <- 1e-8 * (1 + abs(ll_full) + abs(ll_null))
+    if (stat < -numerical_tol) {
+      return(list(p = NA_real_, negative = TRUE))
+    }
+    stat <- max(0, stat)
+    list(
+      p = pchisq(stat, df = df_test, lower.tail = FALSE),
+      negative = FALSE
+    )
   }
 
-  pvals <- unlist(parallel::mclapply(seq_len(n_features), per_peak,
-                                     mc.cores = mc.cores))
+  results <- parallel::mclapply(seq_len(n_features), per_peak,
+                                mc.cores = mc.cores)
+  pvals <- vapply(results, `[[`, numeric(1L), "p")
+  materially_negative <- vapply(results, `[[`, logical(1L), "negative")
 
-  ## Boundary check (math note §9): warn if any fitted exp(atilde_t) for
-  ## t >= 2 is essentially zero, indicating an active order constraint.
-  ## Threshold 1e-3 corresponds to alpha_{t-1} - alpha_t < 0.001, which
-  ## is effectively zero on the logit scale (cumulative probabilities at
-  ## adjacent thresholds differ by less than ~0.025 percentage points
-  ## near p = 0.5). At that point the Self-Liang mixture-of-chi-square
-  ## regime applies and the standard chi^2 p-value over-estimates
-  ## significance. Tunable via `boundary_eps` if exposed; see math note
-  ## §9 for the full discussion.
-  boundary_eps <- 1e-3
-  if (T >= 2L) {
-    a_block_full <- theta_estimated_full[2:T, , drop = FALSE]
-    near_boundary <- which(apply(exp(a_block_full) < boundary_eps, 2, any))
-    if (length(near_boundary) > 0L) {
-      warning(sprintf(
-        "%d peak(s) hit the order-constraint boundary (exp(atilde_t) < %g); chi-square approximation may be unreliable.",
-        length(near_boundary), boundary_eps
-      ))
-    }
+  if (any(!converged)) {
+    warning(sprintf(
+      "%d peak(s) had a non-converged null or full fit; p-values were set to NA.",
+      sum(!converged)
+    ), call. = FALSE)
+  }
+  if (any(boundary_eligible)) {
+    warning(sprintf(
+      paste0(
+        "%d peak(s) had a null or full fit on the order-constraint ",
+        "boundary (threshold gap < %g); p-values were set to NA."
+      ),
+      sum(boundary_eligible), boundary_eps
+    ), call. = FALSE)
+  }
+  if (any(materially_negative)) {
+    warning(sprintf(
+      "%d peak(s) had a materially negative likelihood-ratio statistic; p-values were set to NA.",
+      sum(materially_negative)
+    ), call. = FALSE)
   }
 
   pvals

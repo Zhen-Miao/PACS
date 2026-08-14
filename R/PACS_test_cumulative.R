@@ -11,7 +11,9 @@
 #' @param formula_null A formula object representing the null model. For
 #'   example, ~ batch
 #' @param pic_matrix The input region-by-cell PIC matrix
-#' @param max_T The maximum value of accessibility considered, default = 2
+#' @param max_T The maximum accessibility category considered, default = 2.
+#'   For `method = "exact"`, observed counts greater than `max_T` are
+#'   top-coded, so the final category means `max_T` or more.
 #' @param cap_rates A vector of capturing probability for each cell
 #' @param par_initial_null Initialized values of estimated parameters for the
 #'   null model, we do not
@@ -23,14 +25,27 @@
 #' @param method One of `"stacked"` (default, back-compat) or `"exact"`.
 #'   `"stacked"` uses the original stack-and-treat-as-binary approximation.
 #'   `"exact"` uses the proper cumulative-logit likelihood with capture-rate
-#'   correction (Option B in `notes/cumulative_logit_math.md`); valid LRT df
-#'   and unbiased β estimates.
+#'   correction (Option B in `notes/cumulative_logit_math.md`) and an
+#'   unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+#'   likelihood-ratio tests and are `NA` for non-converged or boundary fits.
+#' @details The unpenalized exact MLE can fail to exist or have singular
+#'   information for very sparse peaks. In review simulations, the exact-path
+#'   `NA` rate rose from 0% for dense peaks to 3% for moderately sparse peaks
+#'   (`n = 300`, `alpha = c(-2.5, -4)`), 38% for still sparser peaks
+#'   (`n = 300`, `alpha = c(-3.5, -5)`), and 46% with fewer cells
+#'   (`n = 100`, `alpha = c(-2.5, -4)`). These rates are scenario-specific,
+#'   not general guarantees. Withholding a p-value is a conservative failure
+#'   policy for the affected peak—it avoids turning a failed fit into a false
+#'   positive—but the resulting loss of analyzable peaks reduces power.
 #'
-#' @return A list of two elements, pacs_converged is a vector
-#'   of length 2*n_peaks representing the convergence status
-#'   of the peak in the null and full model
-#'   and pacs_p_val is a vector of length n_peaks representing the p values for
-#'   each peak.
+#' @return A list of two elements. `pacs_converged` has length
+#'   `2 * n_peaks`, with null-fit statuses followed by full-fit statuses. For
+#'   the exact path, status 1 means converged, 2 means a singular or non-finite
+#'   scoring system, 3 means the iteration limit was reached, 4 means
+#'   step-halving found no acceptable update, and 5 means the supplied starting
+#'   value had a non-finite log-likelihood. `pacs_p_val` contains one p-value per
+#'   peak; exact-path inference is `NA` unless both statuses are 1 and both fits
+#'   are interior.
 #' @export
 #'
 pacs_test_cumu <- function(covariate_meta.data, formula_full,
@@ -171,6 +186,38 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
                                  formula_null, pic_matrix, max_T,
                                  cap_rates, par_initial_null,
                                  par_initial_full, n_cores) {
+  if (length(max_T) != 1L || !is.finite(max_T) || max_T < 1L ||
+      max_T != as.integer(max_T)) {
+    stop("max_T must be a positive integer.", call. = FALSE)
+  }
+  T <- as.integer(max_T)
+  M_dense <- as.matrix(pic_matrix)
+  if (any(!is.finite(M_dense)) || any(M_dense < 0) ||
+      any(M_dense != floor(M_dense))) {
+    stop(
+      "pic_matrix must contain finite, non-negative integer counts.",
+      call. = FALSE
+    )
+  }
+  if (nrow(covariate_meta.data) != ncol(M_dense)) {
+    stop(
+      "covariate_meta.data must have one row per column of pic_matrix.",
+      call. = FALSE
+    )
+  }
+  if (length(cap_rates) != ncol(M_dense) ||
+      any(!is.finite(cap_rates)) || any(cap_rates <= 0) ||
+      any(cap_rates > 1)) {
+    stop(
+      "cap_rates must contain one finite value in (0, 1] per cell.",
+      call. = FALSE
+    )
+  }
+
+  ## max_T is a top-code: category T represents T or more.
+  pic_matrix <- pmin(M_dense, T)
+  dimnames(pic_matrix) <- dimnames(M_dense)
+
   X_full <- model.matrix(formula_full, data = covariate_meta.data)
   X_null <- model.matrix(formula_null, data = covariate_meta.data)
 
@@ -191,7 +238,6 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
   }
   X_full <- X_full[, c(colnames(X_null), pars_of_interest), drop = FALSE]
   p_beta <- ncol(X_full)
-  T <- max_T
 
   ## hold_zero indices in the full theta = (atilde_1..T, beta_1..p):
   ## thresholds always free; betas of interest set to zero under null.
@@ -203,11 +249,7 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
   ## all peaks (matches the binary path's `par_initial = rep.int(0.05, n)`
   ## convention).
   if (is.null(par_initial_full) || length(par_initial_full) != T + p_beta) {
-    M_pool <- as.numeric(if ("sparseMatrix" %in% is(pic_matrix)) {
-      as.matrix(pic_matrix)
-    } else {
-      pic_matrix
-    })
+    M_pool <- as.numeric(pic_matrix)
     par_initial_full <- warm_start_theta(
       M = M_pool, q = cap_rates, T = T, p_beta = p_beta
     )
@@ -228,19 +270,13 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
     q_vec = cap_rates, T = T, mc.cores = n_cores
   )
 
-  conv_mat <- c(
-    null_para[nrow(null_para), ],
-    full_para[nrow(full_para), ]
-  )
+  conv_null <- null_para[nrow(null_para), ]
+  conv_full <- full_para[nrow(full_para), ]
+  conv_mat <- c(conv_null, conv_full)
   null_para <- null_para[seq_len(nrow(null_para) - 1L), , drop = FALSE]
   full_para <- full_para[seq_len(nrow(full_para) - 1L), , drop = FALSE]
 
-  if ("sparseMatrix" %in% is(pic_matrix)) {
-    M_dense <- as.matrix(pic_matrix)
-  } else {
-    M_dense <- pic_matrix
-  }
-  c_by_r <- t(M_dense)
+  c_by_r <- t(pic_matrix)
 
   pacs_p_val <- compare_models_cumu(
     x_full = X_full,
@@ -248,6 +284,7 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
     theta_estimated_null = null_para,
     q_vec = cap_rates, c_by_r = c_by_r, T = T,
     df_test = length(beta_poi_idx),
+    conv_full = conv_full, conv_null = conv_null,
     mc.cores = n_cores
   )
   names(pacs_p_val) <- rownames(pic_matrix)

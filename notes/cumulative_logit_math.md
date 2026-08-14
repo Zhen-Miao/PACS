@@ -5,8 +5,9 @@ This note replaces the current "stack-and-treat-as-binary" approximation in
 handles the per-cell capture rate `q_i` consistently with the existing binary
 model in `R/PACS_test_logit.R`.
 
-The derivation here is the prerequisite for an implementation; no code is
-changed by this document.
+The implemented `method = "exact"` path uses the unpenalized Option B
+likelihood derived here. Bias reduction for this curved model is deferred
+until its adjusted scores have been derived explicitly.
 
 ## 1. Notation
 
@@ -266,7 +267,7 @@ I_{β, β} |_{T = 1} = Σ_i x_i x_i^T · q_i p_{i1} (1 − p_{i1})^2 / (1 − q_
 which matches `wii = q_i p_i (1 − p_i)^2 / (1 − q_i p_i)` in `infor_mat`
 exactly.
 
-### 5.2 Observed information under Option A (Louis identity)
+### 5.2 Information under Option A
 
 For Option A we use Louis' identity to avoid expanding the
 mixture-derivative algebra. Louis gives the *observed* information:
@@ -281,39 +282,70 @@ where the "complete-data" score and information `S^{complete}, J^{complete}`
 are the standard cumulative-logit quantities for the latent `Y_i`
 (McCullagh, 1980), and the expectations are taken under the latent-class
 posterior `γ_{ik}` from §3.2. Summed over `i` this gives the observed
-information `J^{obs}(θ)`.
+information `J^{obs}(θ)`. It is useful for Newton steps, but evaluating it at
+the current iterate does not turn it into expected Fisher information.
 
-For the Firth penalty in §6 we use `J^{obs}(θ̂)` evaluated at the current
-iterate. This is consistent with Heinze & Schemper's recommendation and
-with the existing binary code, which also evaluates `infor_mat` at the
-current iterate rather than taking an outer expectation over `M`.
-
-Computing the *expected* Fisher information under Option A would require
-an additional outer expectation over `M_i` and is not needed for the
-implementation.
-
-## 6. Firth penalty
-
-Carry over the existing penalisation. The penalised log-likelihood is
+If Option A is implemented, its expected information is obtained directly
+by enumerating the observed categories:
 
 ```
-ℓ*(θ) = ℓ(θ) + (1/2) log det I(θ),
+I_i(θ) = Σ_{m=0}^{T} Pr(M_i = m | x_i, q_i, θ) s_{i,m}(θ) s_{i,m}(θ)^T,
+I(θ)   = Σ_i I_i(θ),
 ```
 
-with `I(θ)` the expected Fisher information from §5.1 under Option B, or
-the observed information `J^{obs}(θ)` from §5.2 under Option A. The
-penalty score is
+where `s_{i,m}` is the observed-data score from §4.2 evaluated with
+`M_i = m`. Thus Louis information may be used for optimization while the
+outer expectation above supplies Fisher information when Fisher information
+is specifically required.
+
+## 6. Bias reduction and current estimation policy
+
+The exact path currently maximizes the **unpenalized** Option B likelihood.
+It does not claim Firth mean-bias reduction, unbiased slope estimates, or a
+Firth-corrected likelihood-ratio test.
+
+An earlier implementation added the Jeffreys-type objective
 
 ```
-∂ℓ*/∂θ_r = ∂ℓ/∂θ_r + (1/2) tr( I^{-1} ∂I/∂θ_r ),
+ℓ(θ) + (1/2) log det I(θ).
 ```
 
-which generalises `loss_grad_pen`. Because `I(θ)` now mixes `α` and `β`
-through a non-trivial cross-block, we cannot factor the working weights
-through a single `sqrt(W) · X` matrix as in the binary case. The cleanest
-implementation is to assemble `I(θ)` block-by-block from §5.1 and apply the
-matrix-derivative identity directly; the Cholesky of `I` can be reused for
-both the IRLS step and the Firth gradient.
+That objective was not a derived Firth adjustment for this nonlinear/curved
+capture-adjusted cumulative-logit model. Firth's equivalence between the
+adjusted score and the Jeffreys penalty has parameterization restrictions
+([Firth, 1993](https://doi.org/10.1093/biomet/80.1.27)). Established bias
+reduction for cumulative-link models instead starts from the first-order
+bias and expected information and derives the adjusted scores
+([Kosmidis, 2014](https://doi.org/10.1111/rssb.12025)).
+
+There is also a concrete parameterization problem. Let `G = ∂(α,β) /
+∂(ã,β)`. Applying the determinant penalty after the nonlinear order map gives
+
+```
+(1/2) log det(G^T I_{α,β} G)
+  = (1/2) log det(I_{α,β}) + log |det G|
+  = (1/2) log det(I_{α,β}) + Σ_{s=2}^{T} ã_s.
+```
+
+The last term is an additional threshold-gap penalty, not an optimization
+constant. That defect is separable from the bias-reduction question: computing
+the determinant from `I_(α,β)` would remove the extra term in one line. A
+Jeffreys penalty in `(α, β)` was **not evaluated and rejected** as an estimator
+in this work; it was deliberately not substituted because it still would not
+establish Firth mean-bias reduction for the curved capture-adjusted model.
+Removing the penalty makes the current MLE objective invariant to the order
+reparameterization. Any future bias-reduced estimator must state its target
+parameterization and derive the appropriate adjusted scores before it is
+exposed through the API.
+
+The same limitation applies to the legacy binary capture-adjusted path:
+`loss_grad_pen()` is historically described as Firth correction, but its
+Jeffreys-type adjustment has not been shown here to remove first-order bias
+when `Pr(M_i = 1) = q_i sigma(eta_i)`. It remains unchanged for backward
+compatibility, not as a validated reference implementation of Firth bias
+reduction. The exact Option B path therefore uses the unpenalized likelihood
+for both estimation and inference rather than treating the binary penalty as
+settled statistical ground truth.
 
 ## 7. Order-constraint / identifiability
 
@@ -341,6 +373,11 @@ with `(∂²α_t/∂ã_s ∂ã_s) = − exp(ã_s)` along the diagonal of the cur
 correction. The correction vanishes at the optimum and can be dropped for
 Fisher scoring.
 
+The order map is used only to enforce valid probabilities during numerical
+optimization. Because the implemented objective is the unpenalized
+likelihood, maximizing in `(ã, β)` and mapping back gives the same MLE as
+constrained maximization in `(α, β)` for an interior solution.
+
 Initial values: warm-start with `β = 0`, set `α̂_t` by inverting the
 empirical cumulative rate after capture correction, then map back to `ã`:
 
@@ -366,62 +403,71 @@ When `T = 1`:
   above for both `m = 0` and `m = 1`).
 - The Fisher information in §5.1 reduces to `infor_mat` (verified by the
   algebra at the end of §5.1: `q_i p_{i1} (1 − p_{i1})^2 / (1 − q_i p_{i1})`).
-- The Firth penalty in §6 reduces to `loss_grad_pen`.
 
-This gives us a precise parity test to validate the implementation.
+This gives precise likelihood, score, and expected-information parity tests.
+The exact optimizer itself is intentionally unpenalized and therefore does
+not match the legacy binary Firth optimizer.
 
 ## 9. Likelihood-ratio test under the new model
 
-`compare_models` in `R/differential_identification.R` currently computes the
-penalised LRT using the binary working weights even when called from the
-cumulative wrapper. After the change, the full and null models are fit with
-the cumulative likelihood from §3, and the Firth-corrected LRT uses
+The full and null models are fit with the cumulative likelihood from §3. For
+converged interior fits, `compare_models_cumu` uses the ordinary LRT
 
 ```
-2 [ ℓ*_full(θ̂_full) − ℓ*_null(θ̂_null) ]   ~   χ²_{df},
+2 [ ℓ_full(θ̂_full) − ℓ_null(θ̂_null) ]   ~   χ²_{df},
 ```
 
 with `df` equal to the number of `β` components constrained to zero under
 the null. Both models re-estimate all `α_t` from the same `T`-dimensional
 threshold space, so the thresholds contribute zero to the df.
 
+Inference is withheld (`NA`) when either fit did not converge, when the LRT
+statistic is materially negative, or when either fit is on the order
+boundary. Tiny negative statistics within a scale-aware numerical tolerance
+are rounded to zero; a material negative value indicates that the fitted
+full model failed to attain the nested null likelihood and is not converted
+silently to `p = 1`.
+
+**Sparse-peak behavior.** The unpenalized MLE can fail to exist or its
+information can become singular when a peak has very few nonzero observations.
+In review simulations the exact-path `NA` rate was 0% for dense peaks, 3% at
+`alpha = (-2.5, -4)` with `n = 300`, 38% at `alpha = (-3.5, -5)` with
+`n = 300`, and 46% at `alpha = (-2.5, -4)` with `n = 100`. These figures
+describe those simulation regimes rather than a universal sparsity curve.
+Withholding inference is conservative for the affected peak because a failed
+fit cannot become a false positive, but the increasing `NA` rate reduces
+power by removing peaks from analysis. Simulated type-I error among returned
+p-values was not inflated in the reviewed regimes.
+
 **Boundary caveat.** The χ² approximation assumes the MLE is interior to
-the feasible region. When the order constraint `α_1 ≥ ... ≥ α_T` is
-active at the optimum (i.e. some `exp(ã_t)` is at the lower clip), the
-parameter is on the boundary and the LRT follows a mixture of χ²
-distributions per Self–Liang. In practice we should flag fits that hit the
-clip and either widen the clip or report a warning rather than a p-value.
+the feasible region. When the order constraint `α_1 ≥ ... ≥ α_T` is active
+at the optimum, the reference distribution generally involves a
+problem-specific mixture. The direction of the resulting distortion is not
+universal. Consequently, `compare_models_cumu` checks both full and null
+fits, warns, and returns `NA` rather than an ordinary chi-square p-value.
 
 **Boundary detection threshold.** `compare_models_cumu` flags peaks where
 any `exp(ã_t) < 1e−3` for `t ≥ 2`. At that threshold,
 `α_{t−1} − α_t < 0.001`, which is effectively zero on the logit scale —
 adjacent cumulative probabilities differ by less than ~0.025 percentage
-points near `p = 0.5`. The threshold is conservative; tightening it (say
-`1e−4`) would suppress fewer peaks but risk false negatives on borderline
-fits. We can expose this as an argument once usage patterns clarify
-whether tuning is needed.
+points near `p = 0.5`. This is a numerical guard, not a test of whether a gap
+is statistically distinguishable from zero; that would require its sampling
+uncertainty. Tightening it (say `1e−4`) flags fewer numerically collapsed
+gaps. It is an internal argument to `compare_models_cumu` and is not currently
+part of the public API.
 
-## 10. Implementation plan
+## 10. Implementation status and remaining work
 
-Phased rollout to keep the existing pipeline working:
+- Option B likelihood, score, expected information, ordered-threshold map,
+  unpenalized Fisher scoring, and ordinary LRT are implemented.
+- `max_T` is a top-code in the public exact API: category `T` means `T` or
+  more. Internal likelihood helpers reject responses outside `0:T` clearly.
+- Logistic category differences are computed in log space and scoring uses
+  stable ratios. Fisher-scoring updates use step-halving, and convergence
+  requires both a small step and a small score on the free parameters.
+- The default remains `method = "stacked"` for backward compatibility.
+- Option A and a statistically derived mean-bias-reduction method remain
+  future work. Option A must use the expected-information construction in
+  §5.2 whenever Fisher information is required.
 
-1. **Phase 1 (Option B, parity).** Add `R/param_estimate_cumu.R` with
-   `loss_fun_cumu`, `loss_gradient_cumu`, `infor_mat_cumu`,
-   `loss_grad_pen_cumu`, `irls_iter_cumu`, `irls_iter_cumu_null`. At `T = 1`
-   these must match the existing binary functions to machine precision; add a
-   test in `tests/testthat` that exercises this parity.
-2. **Phase 1 wiring.** Add `method = c("exact", "stacked")` to
-   `pacs_test_cumu`. Default remains `"stacked"` for back-compat in this PR.
-   Provide a vignette example comparing the two on simulated `T = 2` data.
-3. **Phase 2 (LRT).** Update `compare_models` (or add
-   `compare_models_cumu`) to compute the penalised LRT with the new
-   information matrix, used when `method = "exact"`.
-4. **Phase 3 (Option A).** Add a thinning-mode flag and the Louis-identity
-   information matrix. Validate against Phase 1 by simulating from each
-   model and confirming approximate parity at `q_i ≈ 1`.
-5. **Phase 4 (default switch).** Once Phases 1–3 are validated, switch
-   `pacs_test_cumu`'s default to `method = "exact"` and deprecate the
-   stacking path.
-
-Out of scope for this PR: any changes to the binary `pacs_test_logit`
-pipeline.
+Out of scope: changes to the legacy binary `pacs_test_logit` pipeline.
