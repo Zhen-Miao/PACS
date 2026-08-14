@@ -14,7 +14,8 @@ pacs_test_cumu(
   cap_rates,
   par_initial_null = NULL,
   par_initial_full = NULL,
-  n_cores = 1
+  n_cores = 1,
+  method = c("stacked", "exact")
 )
 ```
 
@@ -40,7 +41,9 @@ pacs_test_cumu(
 
 - max_T:
 
-  The maximum value of accessibility considered, default = 2
+  The maximum accessibility category considered, default = 2. For
+  `method = "exact"`, observed counts greater than `max_T` are
+  top-coded, so the final category means `max_T` or more.
 
 - cap_rates:
 
@@ -60,9 +63,35 @@ pacs_test_cumu(
 
   number of cores for multi-core computation
 
+- method:
+
+  One of `"stacked"` (default, back-compat) or `"exact"`. `"stacked"`
+  uses the original stack-and-treat-as-binary approximation. `"exact"`
+  uses the proper cumulative-logit likelihood with capture-rate
+  correction (Option B in `notes/cumulative_logit_math.md`) and an
+  unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+  likelihood-ratio tests and are `NA` for non-converged or boundary
+  fits.
+
 ## Value
 
-A list of two elements, pacs_converged is a vector of length 2\*n_peaks
-representing the convergence status of the peak in the null and full
-model and pacs_p_val is a vector of length n_peaks representing the p
-values for each peak.
+A list of two elements. `pacs_converged` has length `2 * n_peaks`, with
+null-fit statuses followed by full-fit statuses. For the exact path,
+status 1 means converged, 2 means a singular or non-finite scoring
+system, 3 means the iteration limit was reached, 4 means step-halving
+found no acceptable update, and 5 means the supplied starting value had
+a non-finite log-likelihood. `pacs_p_val` contains one p-value per peak;
+exact-path inference is `NA` unless both statuses are 1 and both fits
+are interior.
+
+## Details
+
+The unpenalized exact MLE can fail to exist or have singular information
+for very sparse peaks. In review simulations, the exact-path `NA` rate
+rose from 0% for dense peaks to 3% for moderately sparse peaks
+(`n = 300`, `alpha = c(-2.5, -4)`), 38% for still sparser peaks
+(`n = 300`, `alpha = c(-3.5, -5)`), and 46% with fewer cells (`n = 100`,
+`alpha = c(-2.5, -4)`). These rates are scenario-specific, not general
+guarantees. Withholding a p-value is a conservative failure policy for
+the affected peak—it avoids turning a failed fit into a false
+positive—but the resulting loss of analyzable peaks reduces power.

@@ -51,7 +51,8 @@
 <span>  <span class="va">cap_rates</span>,</span>
 <span>  par_initial_null <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  par_initial_full <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  n_cores <span class="op">=</span> <span class="fl">1</span></span>
+<span>  n_cores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stacked"</span>, <span class="st">"exact"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -79,7 +80,9 @@ example, ~ batch</p></dd>
 
 
 <dt id="arg-max-t">max_T<a class="anchor" aria-label="anchor" href="#arg-max-t"></a></dt>
-<dd><p>The maximum value of accessibility considered, default = 2</p></dd>
+<dd><p>The maximum accessibility category considered, default = 2.
+For <code>method = "exact"</code>, observed counts greater than <code>max_T</code> are
+top-coded, so the final category means <code>max_T</code> or more.</p></dd>
 
 
 <dt id="arg-cap-rates">cap_rates<a class="anchor" aria-label="anchor" href="#arg-cap-rates"></a></dt>
@@ -101,14 +104,38 @@ need to specify unless there are reasons to do so. Default = NULL</p></dd>
 <dt id="arg-n-cores">n_cores<a class="anchor" aria-label="anchor" href="#arg-n-cores"></a></dt>
 <dd><p>number of cores for multi-core computation</p></dd>
 
+
+<dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
+<dd><p>One of <code>"stacked"</code> (default, back-compat) or <code>"exact"</code>.
+<code>"stacked"</code> uses the original stack-and-treat-as-binary approximation.
+<code>"exact"</code> uses the proper cumulative-logit likelihood with capture-rate
+correction (Option B in <code>notes/cumulative_logit_math.md</code>) and an
+unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+likelihood-ratio tests and are <code>NA</code> for non-converged or boundary fits.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list of two elements, pacs_converged is a vector
-of length 2*n_peaks representing the convergence status
-of the peak in the null and full model
-and pacs_p_val is a vector of length n_peaks representing the p values for
-each peak.</p>
+    <p>A list of two elements. <code>pacs_converged</code> has length
+<code>2 * n_peaks</code>, with null-fit statuses followed by full-fit statuses. For
+the exact path, status 1 means converged, 2 means a singular or non-finite
+scoring system, 3 means the iteration limit was reached, 4 means
+step-halving found no acceptable update, and 5 means the supplied starting
+value had a non-finite log-likelihood. <code>pacs_p_val</code> contains one p-value per
+peak; exact-path inference is <code>NA</code> unless both statuses are 1 and both fits
+are interior.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The unpenalized exact MLE can fail to exist or have singular
+information for very sparse peaks. In review simulations, the exact-path
+<code>NA</code> rate rose from 0% for dense peaks to 3% for moderately sparse peaks
+(<code>n = 300</code>, <code>alpha = c(-2.5, -4)</code>), 38% for still sparser peaks
+(<code>n = 300</code>, <code>alpha = c(-3.5, -5)</code>), and 46% with fewer cells
+(<code>n = 100</code>, <code>alpha = c(-2.5, -4)</code>). These rates are scenario-specific,
+not general guarantees. Withholding a p-value is a conservative failure
+policy for the affected peak—it avoids turning a failed fit into a false
+positive—but the resulting loss of analyzable peaks reduces power.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
