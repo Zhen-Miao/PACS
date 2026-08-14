@@ -14,6 +14,14 @@ make_cumu_fixture <- function(n = 400L, p = 2L, T = 2L,
        T = T, n = n, p = p)
 }
 
+## Inverse of PACS:::alpha_from_atilde, written independently of it so that
+## tests parameterise by the ordered thresholds rather than by the internal
+## unconstrained coordinates.
+atilde_from_alpha_test <- function(alpha) {
+  if (length(alpha) == 1L) return(alpha)
+  c(alpha[1L], log(alpha[-length(alpha)] - alpha[-1L]))
+}
+
 ## Build (alpha_1, beta) -> theta-binary equivalent vector for parity tests.
 binary_theta_from_cumu <- function(theta_cumu, T) {
   ## In the cumu code at T=1, theta = (atilde_1 = alpha_1, beta...).

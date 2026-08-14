@@ -13,7 +13,11 @@
 #' @param pic_matrix The input region-by-cell PIC matrix
 #' @param max_T The maximum accessibility category considered, default = 2.
 #'   For `method = "exact"`, observed counts greater than `max_T` are
-#'   top-coded, so the final category means `max_T` or more.
+#'   top-coded. Under `capture = "B"` this is exact and the final category
+#'   means `max_T` or more. Under `capture = "A"` it is an approximation:
+#'   capping and fragment thinning do not commute, so `max_T` acts as a cap on
+#'   the *latent* count and should be set high enough that observed counts
+#'   above it are rare. A warning reports how many were top-coded.
 #' @param cap_rates A vector of capturing probability for each cell
 #' @param par_initial_null Initialized values of estimated parameters for the
 #'   null model, we do not
@@ -25,9 +29,19 @@
 #' @param method One of `"stacked"` (default, back-compat) or `"exact"`.
 #'   `"stacked"` uses the original stack-and-treat-as-binary approximation.
 #'   `"exact"` uses the proper cumulative-logit likelihood with capture-rate
-#'   correction (Option B in `notes/cumulative_logit_math.md`) and an
-#'   unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+#'   correction (`notes/cumulative_logit_math.md`) and an unpenalized
+#'   maximum-likelihood fit. Exact-path p-values are ordinary
 #'   likelihood-ratio tests and are `NA` for non-converged or boundary fits.
+#' @param capture Capture model for `method = "exact"`; ignored by
+#'   `method = "stacked"`. `"B"` (default, back-compat) is cell-level
+#'   all-or-nothing dropout: with probability `q_i` the cell is observed
+#'   perfectly, otherwise its count collapses to zero. `"A"` is fragment-level
+#'   thinning, `M_i | Y_i = k ~ Binomial(k, q_i)`, which is the natural
+#'   generalisation of the binary PACS capture model and the appropriate
+#'   choice when a partially captured cell should still be able to yield a
+#'   nonzero count. The two coincide at `max_T = 1` and diverge as counts of
+#'   2 or more become common. See Options A and B in
+#'   `notes/cumulative_logit_math.md`.
 #' @details The unpenalized exact MLE can fail to exist or have singular
 #'   information for very sparse peaks. In review simulations, the exact-path
 #'   `NA` rate rose from 0% for dense peaks to 3% for moderately sparse peaks
@@ -52,8 +66,19 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
                            formula_null, pic_matrix, max_T = 2,
                            cap_rates, par_initial_null = NULL,
                            par_initial_full = NULL, n_cores = 1,
-                           method = c("stacked", "exact")) {
+                           method = c("stacked", "exact"),
+                           capture = c("B", "A")) {
   method <- match.arg(method)
+  capture_supplied <- !missing(capture)
+  capture <- match.arg(capture)
+  if (method != "exact" && capture_supplied) {
+    ## Silently ignoring a capture-model choice would misrepresent what was
+    ## fitted, so say so rather than let it pass unnoticed.
+    warning(
+      "`capture` only applies to method = \"exact\" and was ignored.",
+      call. = FALSE
+    )
+  }
   if (method == "exact") {
     return(pacs_test_cumu_exact(
       covariate_meta.data = covariate_meta.data,
@@ -64,7 +89,8 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
       cap_rates = cap_rates,
       par_initial_null = par_initial_null,
       par_initial_full = par_initial_full,
-      n_cores = n_cores
+      n_cores = n_cores,
+      capture = capture
     ))
   }
 
@@ -185,7 +211,9 @@ pacs_test_cumu <- function(covariate_meta.data, formula_full,
 pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
                                  formula_null, pic_matrix, max_T,
                                  cap_rates, par_initial_null,
-                                 par_initial_full, n_cores) {
+                                 par_initial_full, n_cores,
+                                 capture = c("B", "A")) {
+  capture <- match.arg(capture)
   if (length(max_T) != 1L || !is.finite(max_T) || max_T < 1L ||
       max_T != as.integer(max_T)) {
     stop("max_T must be a positive integer.", call. = FALSE)
@@ -214,7 +242,30 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
     )
   }
 
-  ## max_T is a top-code: category T represents T or more.
+  ## Under Option B, top-coding the observed count is exact: M_i = Y_i * B_i
+  ## with B_i Bernoulli, so min(M_i, T) = min(Y_i, T) * B_i is again an Option
+  ## B observation with latent min(Y_i, T). Category T legitimately means
+  ## "Y_i >= T".
+  ##
+  ## Under Option A it is not. Capping and thinning do not commute:
+  ## min(Binom(Y, q), T) is not Binom(min(Y, T), q) -- at Y = 5, q = 0.5,
+  ## T = 2 the two give Pr(M = 2) = 0.81 and 0.25. So under Option A the cap
+  ## on the latent Y is a modelling assumption ("no cell carries more than T
+  ## fragments"), not a relabelling of the top category, and max_T must be
+  ## large enough that exceedances are rare.
+  exceedances <- sum(M_dense > T)
+  if (capture == "A" && exceedances > 0L) {
+    warning(sprintf(
+      paste0(
+        "%d observed count(s) exceed max_T = %d and were top-coded. Under ",
+        "capture = \"A\" the latent count is capped at max_T, and capping ",
+        "does not commute with fragment thinning, so this is an ",
+        "approximation rather than a relabelling of the top category. ",
+        "Consider raising max_T."
+      ),
+      exceedances, T
+    ), call. = FALSE)
+  }
   pic_matrix <- pmin(M_dense, T)
   dimnames(pic_matrix) <- dimnames(M_dense)
 
@@ -263,11 +314,12 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
 
   null_para <- estimate_parameters_cumu_null(
     r_by_c = pic_matrix, X = X_full, theta_initial = par_initial_null,
-    hold_zero = hold_zero, q_vec = cap_rates, T = T, mc.cores = n_cores
+    hold_zero = hold_zero, q_vec = cap_rates, T = T, mc.cores = n_cores,
+    capture = capture
   )
   full_para <- estimate_parameters_cumu(
     r_by_c = pic_matrix, X = X_full, theta_initial = par_initial_full,
-    q_vec = cap_rates, T = T, mc.cores = n_cores
+    q_vec = cap_rates, T = T, mc.cores = n_cores, capture = capture
   )
 
   conv_null <- null_para[nrow(null_para), ]
@@ -285,7 +337,7 @@ pacs_test_cumu_exact <- function(covariate_meta.data, formula_full,
     q_vec = cap_rates, c_by_r = c_by_r, T = T,
     df_test = length(beta_poi_idx),
     conv_full = conv_full, conv_null = conv_null,
-    mc.cores = n_cores
+    capture = capture, mc.cores = n_cores
   )
   names(pacs_p_val) <- rownames(pic_matrix)
 

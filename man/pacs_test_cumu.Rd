@@ -14,7 +14,8 @@ pacs_test_cumu(
   par_initial_null = NULL,
   par_initial_full = NULL,
   n_cores = 1,
-  method = c("stacked", "exact")
+  method = c("stacked", "exact"),
+  capture = c("B", "A")
 )
 }
 \arguments{
@@ -31,7 +32,11 @@ example, ~ batch}
 
 \item{max_T}{The maximum accessibility category considered, default = 2.
 For \code{method = "exact"}, observed counts greater than \code{max_T} are
-top-coded, so the final category means \code{max_T} or more.}
+top-coded. Under \code{capture = "B"} this is exact and the final category
+means \code{max_T} or more. Under \code{capture = "A"} it is an approximation:
+capping and fragment thinning do not commute, so \code{max_T} acts as a cap on
+the \emph{latent} count and should be set high enough that observed counts
+above it are rare. A warning reports how many were top-coded.}
 
 \item{cap_rates}{A vector of capturing probability for each cell}
 
@@ -48,9 +53,20 @@ need to specify unless there are reasons to do so. Default = NULL}
 \item{method}{One of \code{"stacked"} (default, back-compat) or \code{"exact"}.
 \code{"stacked"} uses the original stack-and-treat-as-binary approximation.
 \code{"exact"} uses the proper cumulative-logit likelihood with capture-rate
-correction (Option B in \code{notes/cumulative_logit_math.md}) and an
-unpenalized maximum-likelihood fit. Exact-path p-values are ordinary
+correction (\code{notes/cumulative_logit_math.md}) and an unpenalized
+maximum-likelihood fit. Exact-path p-values are ordinary
 likelihood-ratio tests and are \code{NA} for non-converged or boundary fits.}
+
+\item{capture}{Capture model for \code{method = "exact"}; ignored by
+\code{method = "stacked"}. \code{"B"} (default, back-compat) is cell-level
+all-or-nothing dropout: with probability \code{q_i} the cell is observed
+perfectly, otherwise its count collapses to zero. \code{"A"} is fragment-level
+thinning, \code{M_i | Y_i = k ~ Binomial(k, q_i)}, which is the natural
+generalisation of the binary PACS capture model and the appropriate
+choice when a partially captured cell should still be able to yield a
+nonzero count. The two coincide at \code{max_T = 1} and diverge as counts of
+2 or more become common. See Options A and B in
+\code{notes/cumulative_logit_math.md}.}
 }
 \value{
 A list of two elements. \code{pacs_converged} has length

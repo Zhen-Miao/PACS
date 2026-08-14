@@ -1,8 +1,4 @@
-atilde_from_alpha_test <- function(alpha) {
-  if (length(alpha) == 1L) return(alpha)
-  c(alpha[1L], log(alpha[-length(alpha)] - alpha[-1L]))
-}
-
+## atilde_from_alpha_test() lives in helper-cumu.R.
 
 finite_difference_score_test <- function(theta, X, M, q, T, h = 1e-6) {
   vapply(seq_along(theta), function(j) {

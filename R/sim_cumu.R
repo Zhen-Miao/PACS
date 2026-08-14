@@ -4,26 +4,29 @@
 ## Not exported.
 
 
-## Sample M_i from the Option B observed-count distribution.
+## Sample M_i from the observed-count distribution under either capture model.
 ##
-## With probability q_i, draw Y_i from the proportional-odds multinomial
-## defined by (alpha, beta), and set M_i = Y_i.
-## With probability 1 - q_i, set M_i = 0.
+## The latent Y_i is always drawn from the proportional-odds multinomial
+## defined by (alpha, beta). The capture step differs:
+##
+##   capture = "B" (cell-level dropout): with probability q_i, M_i = Y_i;
+##     with probability 1 - q_i, M_i = 0.
+##   capture = "A" (fragment thinning): M_i | Y_i ~ Binomial(Y_i, q_i), so a
+##     partially captured cell can still report an intermediate count.
 ##
 ## Args:
 ##   X      : n × p covariate matrix (no intercept; alpha plays that role).
 ##   alpha  : length-T threshold vector with alpha_1 >= ... >= alpha_T.
 ##   beta   : length-p slope vector.
 ##   q      : length-n capture rates.
-##   capture: "B" only (Option A is deferred per the math note's plan).
+##   capture: "B" or "A".
 ##
 ## Returns: integer vector of length n.
-#' @importFrom stats runif
+#' @importFrom stats runif rbinom
 #' @noRd
-simulate_cumu_pacs <- function(X, alpha, beta, q, capture = "B", seed = NULL) {
-  if (capture != "B") {
-    stop("Only capture = 'B' is implemented; Option A (thinning) is deferred.")
-  }
+simulate_cumu_pacs <- function(X, alpha, beta, q, capture = c("B", "A"),
+                               seed = NULL) {
+  capture <- match.arg(capture)
   if (!is.null(seed)) set.seed(seed)
   n <- nrow(X)
   p <- ncol(X)
@@ -54,10 +57,13 @@ simulate_cumu_pacs <- function(X, alpha, beta, q, capture = "B", seed = NULL) {
   }
   pi_mat[, T + 1L] <- P_ge[, T]                      ## k = T
 
-  ## Sample Y_i from the per-row categorical, then drop to 0 with prob 1-q_i.
+  ## Sample Y_i from the per-row categorical, then apply the capture step.
   Y <- integer(n)
   for (i in seq_len(n)) {
     Y[i] <- sample.int(T + 1L, size = 1L, prob = pi_mat[i, ]) - 1L
+  }
+  if (capture == "A") {
+    return(as.integer(rbinom(n, size = Y, prob = q)))
   }
   drop <- runif(n) > q
   M <- Y

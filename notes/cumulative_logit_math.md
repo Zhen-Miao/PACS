@@ -5,9 +5,10 @@ This note replaces the current "stack-and-treat-as-binary" approximation in
 handles the per-cell capture rate `q_i` consistently with the existing binary
 model in `R/PACS_test_logit.R`.
 
-The implemented `method = "exact"` path uses the unpenalized Option B
-likelihood derived here. Bias reduction for this curved model is deferred
-until its adjusted scores have been derived explicitly.
+The implemented `method = "exact"` path uses the unpenalized likelihood
+derived here under either capture model, selected by `capture = "B"`
+(default) or `capture = "A"`. Bias reduction for this curved model is
+deferred until its adjusted scores have been derived explicitly.
 
 ## 1. Notation
 
@@ -88,8 +89,31 @@ mass parked entirely on `M = 0`. Option A spreads the dropout mass across
 `Y_i = 3` that loses one fragment still contributes to `M_i = 2`, not to
 `M_i = 0`.
 
-We will implement **Option B first** as a drop-in replacement (parity check at
-`T = 1` against existing binary PACS) and add Option A as a second pass.
+Both are implemented. Option B remains the default for backward
+compatibility; Option A is selected with `capture = "A"`. They agree exactly
+at `T = 1`, and both match binary PACS there.
+
+The practical size of the difference at `T = 2` is not small once counts of
+2 are common. With `alpha = (0.8, -0.6)`, `beta = (0.6, -0.35)`,
+`q ~ U(0.3, 0.9)`, `n = 500`, averaged over 60 replicates:
+
+| generated | fitted | `α̂` | gap `α̂_1 − α̂_2` | `β̂` |
+| --- | --- | --- | --- | --- |
+| A | A | (0.79, −0.60) | 1.39 | (0.57, −0.35) |
+| A | B | (1.25, −1.37) | 2.62 | (0.54, −0.32) |
+| B | B | (0.83, −0.60) | 1.44 | (0.61, −0.33) |
+| B | A | (0.12, −0.19) | 0.30 | (0.40, −0.22) |
+
+(truth: `α = (0.80, −0.60)`, gap `1.40`, `β = (0.60, −0.35)`.)
+
+The matched fits recover the truth; the mismatched ones distort the
+thresholds badly in opposite directions. Option B can only explain an
+intermediate observed count as a fully captured cell, so it widens the
+threshold gap to absorb thinned counts; Option A can reach `M = 0` by
+thinning a large `Y`, so it compresses the gap when the real mechanism was
+cell-level dropout. Slopes are less distorted than thresholds here, but the
+`B`-generated/`A`-fitted slope is still off by a third. The choice of
+capture model is a modelling assumption, not a tuning knob.
 
 ## 3. Log-likelihood
 
@@ -157,15 +181,46 @@ At `T = 1` these collapse to the existing binary PACS score in
 
 ### 4.2 Option A
 
-Let `r_{ik} = (u_{ik} − u_{i,k+1}) / (p_{ik} − p_{i,k+1})`. Then
+Write `π_{ik} = p_{ik} − p_{i,k+1}` for `k = 0, ..., T` (so `π_{i0} = 1 −
+p_{i1}` and `π_{iT} = p_{iT}`), and let `r_{ik} = (u_{ik} − u_{i,k+1}) /
+π_{ik}`. Under the conventions `p_{i0} = 1`, `p_{i,T+1} = 0`, `u_{i0} =
+u_{i,T+1} = 0` this simplifies uniformly over `k = 0, ..., T` to
+
+```
+r_{ik} = 1 − p_{ik} − p_{i,k+1}   ∈ (−1, 1),
+```
+
+giving `r_{i0} = −p_{i1}` at the bottom category and `r_{iT} = 1 − p_{iT}` at
+the top. Then
 
 ```
 ∂ℓ_i/∂β   = ( Σ_{k ≥ m_i} γ_{ik} · r_{ik} ) · x_i,
-∂ℓ_i/∂α_t = γ_{it} · u_{it} / Δ_{it}
-            − γ_{i,t−1} · u_{it} / Δ_{i,t−1},
+∂ℓ_i/∂α_t = γ_{it} · u_{it} / π_{it}
+            − γ_{i,t−1} · u_{it} / π_{i,t−1},
 ```
 
-with the convention `γ_{i,m_i − 1} ≡ 0`.
+with the convention `γ_{ik} ≡ 0` for `k < m_i`, so the first term is present
+only when `t ≥ m_i` and the second only when `t − 1 ≥ m_i`.
+
+**Log-space form.** Neither `u_{it}/π_{it}` nor `u_{it}/π_{i,t−1}` should be
+formed directly: a category probability can underflow while the product with
+`γ` stays `O(1)`. Substituting `log γ_{ik} = log w_{ik} + log π_{ik} − ℓ_i`
+cancels `π` exactly:
+
+```
+γ_{it}   · u_{it}/π_{it}     = exp( log w_{i,t}^{(m_i)}   + log u_{it} − ℓ_i ),
+γ_{i,t−1} · u_{it}/π_{i,t−1} = exp( log w_{i,t−1}^{(m_i)} + log u_{it} − ℓ_i ),
+```
+
+so the α-score never references `log π` at all. The β-score does, but only
+through `γ_{ik} r_{ik}` with `|r_{ik}| < 1` and `Σ_k γ_{ik} = 1`, so it is
+bounded by 1 and safe in ordinary arithmetic.
+
+Two further numerical points on the weights `w_{ik}^{(m)} = C(k,m) q_i^m
+(1 − q_i)^{k−m}`, computed as `log C(k,m) + m log q_i + (k−m) log(1 − q_i)`:
+the `m log q_i` term must be skipped at `m = 0`, and the `(k−m) log(1 − q_i)`
+term must be skipped at `k = m`, since `q_i = 1` is permitted and `0 · (−∞)`
+is `NaN`. At `q_i = 1` the weights correctly collapse to `1[m = k]`.
 
 ## 5. Observed information / Hessian
 
@@ -285,8 +340,8 @@ posterior `γ_{ik}` from §3.2. Summed over `i` this gives the observed
 information `J^{obs}(θ)`. It is useful for Newton steps, but evaluating it at
 the current iterate does not turn it into expected Fisher information.
 
-If Option A is implemented, its expected information is obtained directly
-by enumerating the observed categories:
+The implementation does not use Louis' identity. It obtains the expected
+information directly by enumerating the observed categories:
 
 ```
 I_i(θ) = Σ_{m=0}^{T} Pr(M_i = m | x_i, q_i, θ) s_{i,m}(θ) s_{i,m}(θ)^T,
@@ -294,9 +349,28 @@ I(θ)   = Σ_i I_i(θ),
 ```
 
 where `s_{i,m}` is the observed-data score from §4.2 evaluated with
-`M_i = m`. Thus Louis information may be used for optimization while the
-outer expectation above supplies Fisher information when Fisher information
-is specifically required.
+`M_i = m`. This is `T + 1` score evaluations per cell, all vectorised across
+cells, and it is what Fisher scoring uses. Writing the per-cell score as
+`s_{i,m} = (a_{i,m}, c_{i,m} x_i)` with `a_{i,m} ∈ R^T` and `c_{i,m}` a
+scalar, the blocks accumulate as
+
+```
+I_{α,α} = Σ_m A_m^T W_m A_m,
+I_{α,β} = Σ_m A_m^T W_m diag(c_{·,m}) X,
+I_{β,β} = X^T diag( Σ_m Pr(M=m) c_{·,m}^2 ) X,
+```
+
+with `A_m` the `n × T` matrix of `a_{i,m}` rows and `W_m` the diagonal of
+`Pr(M_i = m)`.
+
+Unlike Option B, the α-block is **not** tridiagonal. Under Option B a cell
+with `M_i = m` contributes to `α_t` only for `t ∈ {m, m + 1}`; under Option A
+the posterior `γ_{ik}` puts mass on every latent `k ≥ m_i`, so all thresholds
+couple. None of §5.1's closed forms carry over.
+
+Categories with `Pr(M_i = m) = 0` numerically must be dropped from the sum
+rather than multiplied by a zero weight: `γ_{ik}` is undefined there and
+would contribute `NaN`.
 
 ## 6. Bias reduction and current estimation policy
 
@@ -405,8 +479,10 @@ When `T = 1`:
   algebra at the end of §5.1: `q_i p_{i1} (1 − p_{i1})^2 / (1 − q_i p_{i1})`).
 
 This gives precise likelihood, score, and expected-information parity tests.
-The exact optimizer itself is intentionally unpenalized and therefore does
-not match the legacy binary Firth optimizer.
+Because Option A retains the `log q_i` terms, its `T = 1` log-likelihood
+equals the binary one exactly, whereas Option B's differs by the constant
+`Σ_{i : m_i = 1} log q_i`. The exact optimizer itself is intentionally
+unpenalized and therefore does not match the legacy binary Firth optimizer.
 
 ## 9. Likelihood-ratio test under the new model
 
@@ -458,16 +534,44 @@ part of the public API.
 
 ## 10. Implementation status and remaining work
 
-- Option B likelihood, score, expected information, ordered-threshold map,
-  unpenalized Fisher scoring, and ordinary LRT are implemented.
-- `max_T` is a top-code in the public exact API: category `T` means `T` or
-  more. Internal likelihood helpers reject responses outside `0:T` clearly.
+- Option B and Option A likelihoods, scores, expected information, the
+  ordered-threshold map, unpenalized Fisher scoring, and the ordinary LRT are
+  implemented. `capture` selects the model and is threaded through fitting,
+  the LRT, and the public API; it defaults to `"B"`.
+- Option A uses the expected-information construction in §5.2; Louis'
+  identity is not used anywhere.
+- Option B's log-likelihood drops the `log q_i` constant for `m_i ≥ 1`;
+  Option A keeps every capture term, because its weights depend on `m_i`.
+  Each is internally consistent, so LRT statistics are unaffected, but the
+  two log-likelihood *values* are not comparable across capture models.
+- `max_T` behaves differently under the two capture models, and this is the
+  one place where Option B is genuinely better behaved.
+
+  Under Option B, `M_i = Y_i · B_i` with `B_i ~ Bernoulli(q_i)`, so
+  `min(M_i, T) = min(Y_i, T) · B_i`. Top-coding the observed count is exactly
+  an Option B observation with latent `min(Y_i, T)`: the cap commutes with
+  the capture step, and category `T` legitimately means `Y_i ≥ T`.
+
+  Under Option A it does not commute. `min(Binom(Y_i, q_i), T)` is not
+  `Binom(min(Y_i, T), q_i)`; at `Y_i = 5`, `q_i = 0.5`, `T = 2` these give
+  `Pr(M_i = 2) = 0.8125` and `0.25` respectively. The implemented likelihood
+  is the second. So under Option A the cap is a modelling assumption about
+  the latent count, not a relabelling of the top category, and `max_T` must
+  be chosen large enough that observed exceedances are rare. The public API
+  warns when it top-codes any count under `capture = "A"`.
+
+  Internal likelihood helpers reject responses outside `0:T` clearly under
+  both options.
 - Logistic category differences are computed in log space and scoring uses
   stable ratios. Fisher-scoring updates use step-halving, and convergence
   requires both a small step and a small score on the free parameters.
 - The default remains `method = "stacked"` for backward compatibility.
-- Option A and a statistically derived mean-bias-reduction method remain
-  future work. Option A must use the expected-information construction in
-  §5.2 whenever Fisher information is required.
+- The `T + 1` binomial thinning weights depend only on `(q, T)`, never on
+  `θ`, so they are computed once per fit and reused across peaks and
+  iterations.
+- The §7 warm start inverts Option B's marginal exactly and Option A's only
+  approximately; it is used for both, as a starting value only.
+- A statistically derived mean-bias-reduction method remains future work for
+  both capture models.
 
 Out of scope: changes to the legacy binary `pacs_test_logit` pipeline.

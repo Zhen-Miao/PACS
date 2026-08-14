@@ -17,13 +17,18 @@
 ##                         to zero under null (thresholds are shared).
 ##   conv_full/conv_null : optional per-feature convergence codes. Code 1 is
 ##                         the only status eligible for inference.
+##   capture             : "B" (cell-level dropout) or "A" (fragment-level
+##                         thinning). Must match the capture model the thetas
+##                         were fitted under, or the statistic is meaningless.
 ##   mc.cores            : passed to mclapply.
 compare_models_cumu <- function(x_full, theta_estimated_full,
                                 theta_estimated_null,
                                 q_vec, c_by_r, T, df_test,
                                 conv_full = NULL, conv_null = NULL,
                                 boundary_eps = 1e-3,
+                                capture = c("B", "A"),
                                 mc.cores = 1L) {
+  capture <- match.arg(capture)
   if ("sparseMatrix" %in% is(c_by_r)) {
     c_by_r <- as.matrix(c_by_r)
   }
@@ -71,6 +76,9 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
   }
   boundary_eligible <- boundary & converged
 
+  ## Depends only on (q, T); shared by every peak and both fits.
+  log_w <- if (capture == "A") thinning_log_weights(q_vec, T) else NULL
+
   per_peak <- function(j) {
     if (!converged[j] || boundary_eligible[j]) {
       return(list(p = NA_real_, negative = FALSE))
@@ -78,8 +86,12 @@ compare_models_cumu <- function(x_full, theta_estimated_full,
     M_j <- as.numeric(c_by_r[, j])
     th_full <- theta_estimated_full[, j]
     th_null <- theta_estimated_null[, j]
-    ll_full <- try(loss_fun_cumu(th_full, x_full, M_j, q_vec, T), silent = TRUE)
-    ll_null <- try(loss_fun_cumu(th_null, x_full, M_j, q_vec, T), silent = TRUE)
+    ll_full <- try(loss_fun_cumu(th_full, x_full, M_j, q_vec, T,
+                                 capture = capture, log_w = log_w),
+                   silent = TRUE)
+    ll_null <- try(loss_fun_cumu(th_null, x_full, M_j, q_vec, T,
+                                 capture = capture, log_w = log_w),
+                   silent = TRUE)
     if (inherits(ll_full, "try-error") || inherits(ll_null, "try-error") ||
         !is.finite(ll_full) || !is.finite(ll_null)) {
       return(list(p = NA_real_, negative = FALSE))
